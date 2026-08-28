@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/df-mc/dragonfly/server/entity/effect"
+	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -99,4 +100,15 @@ func filterLiving(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
 			}
 		}
 	}
+}
+
+// FinalDamage returns the damage dealt to an entity after the armour worn and an active resistance effect
+// reduced the damage passed.
+func FinalDamage(dmg float64, src world.DamageSource, armour *inventory.Armour, effects *EffectManager) float64 {
+	dmg = max(dmg, 0)
+	dmg -= armour.DamageReduction(dmg, src)
+	if res, ok := effects.Effect(effect.Resistance); ok {
+		dmg *= effect.Resistance.Multiplier(src, res.Level())
+	}
+	return dmg
 }

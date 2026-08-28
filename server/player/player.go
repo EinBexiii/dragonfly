@@ -681,13 +681,7 @@ func (p *Player) applyTotemEffects() {
 // enchantments on the individual pieces.
 // The damage returned will be at the least 0.
 func (p *Player) FinalDamageFrom(dmg float64, src world.DamageSource) float64 {
-	dmg = max(dmg, 0)
-
-	dmg -= p.Armour().DamageReduction(dmg, src)
-	if res, ok := p.Effect(effect.Resistance); ok {
-		dmg *= effect.Resistance.Multiplier(src, res.Level())
-	}
-	return dmg
+	return entity.FinalDamage(dmg, src, p.armour, p.effects)
 }
 
 // Explode ...

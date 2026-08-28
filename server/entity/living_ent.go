@@ -172,12 +172,7 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 	if h, ok := e.Behaviour().(LivingHurtHandler); ok && h.HandleHurt(e, &damage, src) {
 		return 0, false
 	}
-	if src.ReducedByArmour() {
-		damage -= s.Armour.DamageReduction(damage, src)
-	}
-	if res, ok := s.Effects.Effect(effect.Resistance); ok && src.ReducedByResistance() {
-		damage *= effect.Resistance.Multiplier(src, res.Level())
-	}
+	damage = FinalDamage(damage, src, s.Armour, s.Effects)
 	damageLeft, immune := s.Immunity.Reduce(damage)
 	if immune && damageLeft <= 0 {
 		return 0, false
