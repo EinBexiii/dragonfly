@@ -45,6 +45,19 @@ func (e *Ent) Behaviour() Behaviour {
 	return b
 }
 
+// Tx returns the transaction the entity was opened in.
+func (e *Ent) Tx() *world.Tx {
+	return e.tx
+}
+
+// Data returns the entity data of the entity's handle, the state that persists across transactions. It is
+// writable, and writing to it is not the same as moving the entity: setting Pos or Vel here changes where the
+// entity is without telling anyone watching it, so a viewer keeps drawing it where it was. Move an entity
+// through its Movement instead, and reach for this only for state no method covers.
+func (e *Ent) Data() *world.EntityData {
+	return e.data
+}
+
 // Unwrap returns the Ent itself. It is promoted by entities that embed Ent, so that the underlying Ent can
 // be recognised wherever behaviour hooks are dispatched.
 func (e *Ent) Unwrap() *Ent {
