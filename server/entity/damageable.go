@@ -12,9 +12,11 @@ type Hurtable interface {
 	Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool)
 }
 
-// behaviourDamageable represents a Behaviour that may be hurt directly without
-// implementing Living.
-type behaviourDamageable interface {
+// DamageableBehaviour may be implemented by a Behaviour to let its entity take damage without implementing
+// the full Living interface. HurtEntity and Ent.Hurt dispatch to it.
+type DamageableBehaviour interface {
+	// Hurt hurts the entity of the Behaviour. It returns the damage dealt and whether the entity was
+	// vulnerable to it.
 	Hurt(e *Ent, damage float64, src world.DamageSource) (n float64, vulnerable bool)
 }
 
@@ -28,7 +30,7 @@ func HurtEntity(e world.Entity, damage float64, src world.DamageSource) (n float
 	}
 	if w, ok := e.(wrappedEnt); ok {
 		ent := w.Unwrap()
-		if d, ok := ent.Behaviour().(behaviourDamageable); ok {
+		if d, ok := ent.Behaviour().(DamageableBehaviour); ok {
 			n, vulnerable = d.Hurt(ent, damage, src)
 			return n, vulnerable, true
 		}
@@ -42,7 +44,7 @@ func DamageableEntity(e world.Entity) bool {
 		return true
 	}
 	if w, ok := e.(wrappedEnt); ok {
-		_, ok = w.Unwrap().Behaviour().(behaviourDamageable)
+		_, ok = w.Unwrap().Behaviour().(DamageableBehaviour)
 		return ok
 	}
 	return false
