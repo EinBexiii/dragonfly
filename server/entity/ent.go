@@ -41,6 +41,27 @@ func (e *Ent) Behaviour() Behaviour {
 	return e.data.Data.(Behaviour)
 }
 
+// Unwrap returns the Ent itself. It is promoted by entities that embed Ent, such as LivingEnt, so that the
+// underlying Ent can be recognised wherever behaviour hooks are dispatched.
+func (e *Ent) Unwrap() *Ent {
+	return e
+}
+
+// wrappedEnt is implemented by any entity carrying an Ent: the Ent itself or a struct embedding it.
+type wrappedEnt interface {
+	Unwrap() *Ent
+}
+
+// Hurt dispatches damage to the entity's Behaviour if it implements the behaviourDamageable Hurt method
+// and reports the entity as invulnerable otherwise. Blocks dealing environmental damage assert this method,
+// so it makes entities such as end crystals vulnerable to them without implementing Living.
+func (e *Ent) Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool) {
+	if d, ok := e.Behaviour().(behaviourDamageable); ok {
+		return d.Hurt(e, damage, src)
+	}
+	return 0, false
+}
+
 // Explode propagates the explosion behaviour of the underlying Behaviour.
 func (e *Ent) Explode(src world.ExplosionSource, impact float64) {
 	if expl, ok := e.Behaviour().(interface {
