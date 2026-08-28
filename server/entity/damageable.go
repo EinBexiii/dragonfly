@@ -1,6 +1,10 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	"iter"
+
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // Hurtable is a world.Entity that may be hurt directly. It is the least the
 // shared damage helpers need of an entity, and is deliberately smaller than
@@ -48,4 +52,19 @@ func DamageableEntity(e world.Entity) bool {
 		return ok
 	}
 	return false
+}
+
+// filterDamageable filters an entity sequence down to the entities that may be damaged, as reported by
+// DamageableEntity.
+func filterDamageable(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
+	return func(yield func(world.Entity) bool) {
+		for e := range seq {
+			if !DamageableEntity(e) {
+				continue
+			}
+			if !yield(e) {
+				return
+			}
+		}
+	}
 }

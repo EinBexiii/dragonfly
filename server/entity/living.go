@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"iter"
+
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
@@ -76,4 +78,18 @@ func KnockBackVector(pos, src mgl64.Vec3, force, height float64) mgl64.Vec3 {
 	}
 	velocity[1] = height
 	return velocity
+}
+
+// filterLiving filters an entity sequence down to the entities that implement Living.
+func filterLiving(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
+	return func(yield func(world.Entity) bool) {
+		for e := range seq {
+			if _, living := e.(Living); !living {
+				continue
+			}
+			if !yield(e) {
+				return
+			}
+		}
+	}
 }

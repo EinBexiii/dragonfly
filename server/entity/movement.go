@@ -186,11 +186,11 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 // what blocks need to have their BBox returned.
 func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	grown := box.Grow(0.25)
-	min, max := grown.Min(), grown.Max()
-	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
+	low, high := grown.Min(), grown.Max()
+	minX, minY, minZ := int(math.Floor(low[0])), int(math.Floor(low[1])), int(math.Floor(low[2]))
 	// The maximum bounds are exclusive: A block starting exactly at the box's
 	// maximum cannot collide with it.
-	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
+	maxX, maxY, maxZ := int(math.Ceil(high[0])), int(math.Ceil(high[1])), int(math.Ceil(high[2]))
 
 	// A prediction of one BBox per block, plus an additional 2, in case. Allocate
 	// it lazily so that entities moving through air do not allocate an empty slice

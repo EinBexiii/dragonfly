@@ -186,7 +186,7 @@ func (lt *ProjectileBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		return m
 	}
 
-	for i := 0; i < lt.conf.ParticleCount; i++ {
+	for range lt.conf.ParticleCount {
 		tx.AddParticle(result.Position(), lt.conf.Particle)
 	}
 	if lt.conf.Sound != nil {
