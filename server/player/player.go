@@ -20,16 +20,13 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
 	"github.com/df-mc/dragonfly/server/item/inventory"
-	"github.com/df-mc/dragonfly/server/player/bossbar"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/debug"
 	"github.com/df-mc/dragonfly/server/player/dialogue"
 	"github.com/df-mc/dragonfly/server/player/form"
 	"github.com/df-mc/dragonfly/server/player/hud"
 	"github.com/df-mc/dragonfly/server/player/input"
-	"github.com/df-mc/dragonfly/server/player/scoreboard"
 	"github.com/df-mc/dragonfly/server/player/skin"
-	"github.com/df-mc/dragonfly/server/player/title"
 	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/particle"
@@ -229,29 +226,10 @@ func (p *Player) Messaget(t chat.Translation, a ...any) {
 	p.session().SendTranslation(t, p.locale, a)
 }
 
-// SendPopup sends a formatted popup to the player. The popup is shown above the hotbar of the player and
-// overwrites/is overwritten by the name of the item equipped.
-// The popup is formatted following the rules of fmt.Sprintln without a newline at the end.
-func (p *Player) SendPopup(a ...any) {
-	p.session().SendPopup(format(a))
-}
-
-// SendTip sends a tip to the player. The tip is shown in the middle of the screen of the player.
-// The tip is formatted following the rules of fmt.Sprintln without a newline at the end.
-func (p *Player) SendTip(a ...any) {
-	p.session().SendTip(format(a))
-}
-
 // SendJukeboxPopup sends a formatted jukebox popup to the player. This popup is shown above the hotbar of the player.
 // The popup is close to the position of an action bar message and the text has no background.
 func (p *Player) SendJukeboxPopup(a ...any) {
 	p.session().SendJukeboxPopup(format(a))
-}
-
-// SendToast sends a toast to the player. This toast is shown at the top of the screen, similar to achievements or pack
-// loading.
-func (p *Player) SendToast(title, message string) {
-	p.session().SendToast(title, message)
 }
 
 // ResetFallDistance resets the player's fall distance.
@@ -262,49 +240,6 @@ func (p *Player) ResetFallDistance() {
 // FallDistance returns the player's fall distance.
 func (p *Player) FallDistance() float64 {
 	return p.fallDistance
-}
-
-// SendTitle sends a title to the player. The title may be configured to change the duration it is displayed
-// and the text it shows.
-// If non-empty, the subtitle is shown in a smaller font below the title. The same counts for the action text
-// of the title, which is shown in a font similar to that of a tip/popup.
-func (p *Player) SendTitle(t title.Title) {
-	p.session().SetTitleDurations(t.FadeInDuration(), t.Duration(), t.FadeOutDuration())
-	if t.Text() != "" || t.Subtitle() != "" {
-		p.session().SendTitle(t.Text())
-		if t.Subtitle() != "" {
-			p.session().SendSubtitle(t.Subtitle())
-		}
-	}
-	if t.ActionText() != "" {
-		p.session().SendActionBarMessage(t.ActionText())
-	}
-}
-
-// SendScoreboard sends a scoreboard to the player. The scoreboard will be present indefinitely until removed
-// by the caller.
-// SendScoreboard may be called at any time to change the scoreboard of the player.
-func (p *Player) SendScoreboard(scoreboard *scoreboard.Scoreboard) {
-	p.session().SendScoreboard(scoreboard)
-}
-
-// RemoveScoreboard removes any scoreboard currently present on the screen of the player. Nothing happens if
-// the player has no scoreboard currently active.
-func (p *Player) RemoveScoreboard() {
-	p.session().RemoveScoreboard()
-}
-
-// SendBossBar sends a boss bar to the player, so that it will be shown indefinitely at the top of the
-// player's screen.
-// The boss bar may be removed by calling Player.RemoveBossBar().
-func (p *Player) SendBossBar(bar bossbar.BossBar) {
-	p.session().SendBossBar(bar.Text(), bar.Colour().Uint8(), bar.HealthPercentage())
-}
-
-// RemoveBossBar removes any boss bar currently active on the player's screen. If no boss bar is currently
-// present, nothing happens.
-func (p *Player) RemoveBossBar() {
-	p.session().RemoveBossBar()
 }
 
 // Chat writes a message in the global chat (chat.Global). The message is prefixed with the name of the
@@ -395,26 +330,6 @@ func (p *Player) SendForm(f form.Form) {
 // happens.
 func (p *Player) CloseForm() {
 	p.session().CloseForm()
-}
-
-// ShowCoordinates enables the vanilla coordinates for the player.
-func (p *Player) ShowCoordinates() {
-	p.session().EnableCoordinates(true)
-}
-
-// HideCoordinates disables the vanilla coordinates for the player.
-func (p *Player) HideCoordinates() {
-	p.session().EnableCoordinates(false)
-}
-
-// EnableInstantRespawn enables the vanilla instant respawn for the player.
-func (p *Player) EnableInstantRespawn() {
-	p.session().EnableInstantRespawn(true)
-}
-
-// DisableInstantRespawn disables the vanilla instant respawn for the player.
-func (p *Player) DisableInstantRespawn() {
-	p.session().EnableInstantRespawn(false)
 }
 
 // SetNameTag changes the name tag displayed over the player in-game. Changing the name tag does not change
@@ -2509,22 +2424,6 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	}
 }
 
-// HideEntity hides a world.Entity from the Player so that it can under no circumstance see it. Hidden entities can be
-// made visible again through a call to ShowEntity.
-func (p *Player) HideEntity(e world.Entity) {
-	if p.session() != session.Nop && p.H() != e.H() {
-		p.session().StopShowingEntity(e)
-	}
-}
-
-// ShowEntity shows a world.Entity previously hidden from the Player using HideEntity. It does nothing if the entity
-// wasn't currently hidden.
-func (p *Player) ShowEntity(e world.Entity) {
-	if p.session() != session.Nop {
-		p.session().StartShowingEntity(e)
-	}
-}
-
 // Latency returns a rolling average of latency between the sending and the receiving end of the connection of
 // the player.
 // The latency returned is updated continuously and is half the round trip time (RTT).
@@ -2641,46 +2540,6 @@ func (p *Player) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 // ViewLayer returns the ViewLayer attached to the player's session.
 func (p *Player) ViewLayer() *world.ViewLayer {
 	return p.session().ViewLayer()
-}
-
-// ViewNameTag overrides the public name tag of the entity for this player.
-func (p *Player) ViewNameTag(entity world.Entity, nameTag string) {
-	p.session().ViewNameTag(entity, nameTag)
-}
-
-// ViewPublicNameTag removes the name tag override of the entity for this player.
-func (p *Player) ViewPublicNameTag(entity world.Entity) {
-	p.session().ViewPublicNameTag(entity)
-}
-
-// ViewAlwaysShowNameTag overrides whether the entity's name tag is shown at all distances for this player.
-func (p *Player) ViewAlwaysShowNameTag(entity world.Entity, alwaysShow bool) {
-	p.session().ViewAlwaysShowNameTag(entity, alwaysShow)
-}
-
-// ViewPublicAlwaysShowNameTag removes the always-show name tag override of the entity for this player.
-func (p *Player) ViewPublicAlwaysShowNameTag(entity world.Entity) {
-	p.session().ViewPublicAlwaysShowNameTag(entity)
-}
-
-// ViewScoreTag overrides the public score tag of the entity for this player.
-func (p *Player) ViewScoreTag(entity world.Entity, scoreTag string) {
-	p.session().ViewScoreTag(entity, scoreTag)
-}
-
-// ViewPublicScoreTag removes the score tag override of the entity for this player.
-func (p *Player) ViewPublicScoreTag(entity world.Entity) {
-	p.session().ViewPublicScoreTag(entity)
-}
-
-// ViewVisibility overrides the public visibility of the entity for this player.
-func (p *Player) ViewVisibility(entity world.Entity, level world.VisibilityLevel) {
-	p.session().ViewVisibility(entity, level)
-}
-
-// RemoveViewLayer removes all view-layer overrides of the entity for this player.
-func (p *Player) RemoveViewLayer(entity world.Entity) {
-	p.session().RemoveViewLayer(entity)
 }
 
 // tickAirSupply tick's the player's air supply, consuming it when underwater, and replenishing it when out of water.
@@ -2906,12 +2765,6 @@ func (p *Player) TorsoHeight() float64 {
 // to players around it.
 func (p *Player) PlaySound(sound world.Sound) {
 	p.session().PlaySound(sound, entity.EyePosition(p))
-}
-
-// ShowParticle shows a particle that only this Player can see. Unlike World.AddParticle, it is not broadcast
-// to players around it.
-func (p *Player) ShowParticle(pos mgl64.Vec3, particle world.Particle) {
-	p.session().ViewParticle(pos, particle)
 }
 
 // OpenSign makes the player open the sign at the cube.Pos passed, with the specific side provided. The client will not
