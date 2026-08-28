@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -119,22 +118,4 @@ func InsideOfSolid(e world.Entity, tx *world.Tx) bool {
 		}
 	}
 	return false
-}
-
-// Fall lands an entity that fell the distance passed. The block landed on may soften the distance, a jump
-// boost effect reduces it further and the remainder is dealt as fall damage.
-func Fall(e interface {
-	world.Entity
-	Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool)
-}, tx *world.Tx, effects *EffectManager, distance float64) {
-	CheckEntityLanders(tx, e, e.H().Type().BBox(e).Translate(e.Position()), &distance)
-
-	dmg := distance - 3
-	if boost, ok := effects.Effect(effect.JumpBoost); ok {
-		dmg -= float64(boost.Level())
-	}
-	if dmg < 0.5 {
-		return
-	}
-	e.Hurt(math.Ceil(dmg), FallDamageSource{})
 }

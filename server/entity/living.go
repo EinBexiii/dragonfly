@@ -2,10 +2,8 @@ package entity
 
 import (
 	"iter"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/entity/effect"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -69,25 +67,6 @@ type Living interface {
 	SetSpeed(float64)
 }
 
-// KnockBackVector returns the velocity that knocks back an entity at pos away from src with the force and
-// height passed.
-func KnockBackVector(pos, src mgl64.Vec3, force, height float64) mgl64.Vec3 {
-	velocity := pos.Sub(src)
-	velocity[1] = 0
-
-	if velocity.Len() != 0 {
-		velocity = velocity.Normalize().Mul(force)
-	}
-	velocity[1] = height
-	return velocity
-}
-
-// ExplosionDamage returns the damage an explosion of the size passed deals to an entity exposed to it with
-// the impact passed, following the vanilla formula.
-func ExplosionDamage(size, impact float64) float64 {
-	return math.Floor((impact*impact+impact)*3.5*size*2 + 1)
-}
-
 // filterLiving filters an entity sequence down to the entities that implement Living.
 func filterLiving(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
 	return func(yield func(world.Entity) bool) {
@@ -100,15 +79,4 @@ func filterLiving(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
 			}
 		}
 	}
-}
-
-// FinalDamage returns the damage dealt to an entity after the armour worn and an active resistance effect
-// reduced the damage passed.
-func FinalDamage(dmg float64, src world.DamageSource, armour *inventory.Armour, effects *EffectManager) float64 {
-	dmg = max(dmg, 0)
-	dmg -= armour.DamageReduction(dmg, src)
-	if res, ok := effects.Effect(effect.Resistance); ok {
-		dmg *= effect.Resistance.Multiplier(src, res.Level())
-	}
-	return dmg
 }
