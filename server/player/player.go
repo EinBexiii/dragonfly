@@ -111,14 +111,11 @@ type playerData struct {
 // Player is an implementation of a player entity. It has methods that implement the behaviour that players
 // need to play in the world.
 type Player struct {
+	*entity.Ent
 	tx     *world.Tx
 	handle *world.EntityHandle
 	data   *world.EntityData
 	*playerData
-}
-
-func (p *Player) H() *world.EntityHandle {
-	return p.handle
 }
 
 func (p *Player) Tx() *world.Tx {
@@ -2337,17 +2334,6 @@ func (p *Player) Displace(deltaPos mgl64.Vec3) {
 	p.updateFallState(deltaPos[1])
 }
 
-// Position returns the current position of the player. It may be changed as the player moves or is moved
-// around the world.
-func (p *Player) Position() mgl64.Vec3 {
-	return p.data.Pos
-}
-
-// Velocity returns the players current velocity. If there is an attached session, this will be empty.
-func (p *Player) Velocity() mgl64.Vec3 {
-	return p.data.Vel
-}
-
 // SetVelocity updates the player's velocity. If there is an attached session, this will just send
 // the velocity to the player session for the player to update.
 func (p *Player) SetVelocity(velocity mgl64.Vec3) {
@@ -2358,13 +2344,6 @@ func (p *Player) SetVelocity(velocity mgl64.Vec3) {
 	for _, v := range p.viewers() {
 		v.ViewEntityVelocity(p, velocity)
 	}
-}
-
-// Rotation returns the yaw and pitch of the player in degrees. Yaw is horizontal rotation (rotation around the
-// vertical axis, 0 when facing forward), pitch is vertical rotation (rotation around the horizontal axis, also 0
-// when facing forward).
-func (p *Player) Rotation() cube.Rotation {
-	return p.data.Rot
 }
 
 // Collect makes the player collect the item stack passed, adding it to the inventory. The amount of items that could
@@ -2595,6 +2574,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 
 	p.checkBlockCollisions(p.data.Vel)
 	p.onGround = p.checkOnGround(mgl64.Vec3{})
+	p.Ent.Data().Age += time.Second / 20
 	p.checkEntitySteppers()
 
 	p.effects.Tick(p, p.tx)
@@ -3023,6 +3003,18 @@ func (p *Player) Breathing() bool {
 	_, conduitPower := p.Effect(effect.ConduitPower)
 	_, submerged := p.tx.Liquid(cube.PosFromVec3(entity.EyePosition(p)))
 	return !p.GameMode().AllowsTakingDamage() || !submerged || breathing || conduitPower
+}
+
+// UpdateState resends the player's metadata to all viewers of the player.
+func (p *Player) UpdateState() {
+	p.updateState()
+}
+
+// PlayAction plays a world.EntityAction for all viewers of the player.
+func (p *Player) PlayAction(a world.EntityAction) {
+	for _, v := range p.viewers() {
+		v.ViewEntityAction(p, a)
+	}
 }
 
 // SwingArm makes the player swing its arm.
