@@ -98,9 +98,7 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 	owner, _ := f.conf.Owner.Entity(tx)
 	pos, explosions := e.Position(), f.conf.Firework.Explosions
 
-	for _, v := range tx.Viewers(pos) {
-		v.ViewEntityAction(e, FireworkExplosionAction{})
-	}
+	e.PlayAction(FireworkExplosionAction{})
 	for _, explosion := range explosions {
 		if explosion.Shape == item.FireworkShapeHugeSphere() {
 			tx.PlaySound(pos, sound.FireworkHugeBlast{})
