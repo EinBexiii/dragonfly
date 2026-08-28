@@ -85,8 +85,7 @@ type playerData struct {
 
 	lastXPPickup *time.Time
 
-	lastDamage  float64
-	immuneUntil time.Time
+	immunity entity.AttackImmunity
 
 	deathPos       *mgl64.Vec3
 	deathDimension world.Dimension
@@ -629,11 +628,9 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	totalDamage := p.FinalDamageFrom(dmg, src)
 	damageLeft := totalDamage
 
-	immune := time.Now().Before(p.immuneUntil)
-	if immune {
-		if damageLeft -= p.lastDamage; damageLeft <= 0 {
-			return 0, false
-		}
+	damageLeft, immune := p.immunity.Reduce(damageLeft)
+	if immune && damageLeft <= 0 {
+		return 0, false
 	}
 
 	immunity := time.Second / 2
@@ -641,7 +638,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if p.Handler().HandleHurt(ctx, &damageLeft, immune, &immunity, src); ctx.Cancelled() {
 		return 0, false
 	}
-	p.setAttackImmunity(immunity, totalDamage)
+	p.immunity.Arm(immunity, totalDamage)
 
 	if a := p.Absorption(); a > 0 {
 		remaining := a - damageLeft
@@ -771,12 +768,6 @@ func (p *Player) KnockBack(src mgl64.Vec3, force, height float64) {
 func (p *Player) knockBack(src mgl64.Vec3, force, height float64) {
 	velocity := entity.KnockBackVector(p.Position(), src, force, height)
 	p.SetVelocity(velocity.Mul(1 - p.Armour().KnockBackResistance()))
-}
-
-// setAttackImmunity sets the duration the player is immune to entity attacks.
-func (p *Player) setAttackImmunity(d time.Duration, dmg float64) {
-	p.immuneUntil = time.Now().Add(d)
-	p.lastDamage = dmg
 }
 
 // Food returns the current food level of a player. The level returned is guaranteed to always be between 0
