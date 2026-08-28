@@ -94,7 +94,9 @@ func (p *PassiveBehaviour) Tick(e *Ent, tx *world.Tx) *Movement {
 		p.conf.Tick(e, tx)
 	}
 
-	if p.Fuse()%(time.Second/4) == 0 {
+	// Entities with a running fuse resend their state every quarter second so
+	// viewers see the fuse time progress.
+	if f := p.Fuse(); f >= 0 && f%(time.Second/4) == 0 {
 		for _, v := range tx.Viewers(m.pos) {
 			v.ViewEntityState(e)
 		}
