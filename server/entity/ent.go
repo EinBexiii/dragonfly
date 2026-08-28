@@ -52,21 +52,26 @@ type wrappedEnt interface {
 	Unwrap() *Ent
 }
 
-// Hurt dispatches damage to the entity's Behaviour if it implements the behaviourDamageable Hurt method
+// Hurt dispatches damage to the entity's Behaviour if it implements the DamageableBehaviour Hurt method
 // and reports the entity as invulnerable otherwise. Blocks dealing environmental damage assert this method,
 // so it makes entities such as end crystals vulnerable to them without implementing Living.
 func (e *Ent) Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool) {
-	if d, ok := e.Behaviour().(behaviourDamageable); ok {
+	if d, ok := e.Behaviour().(DamageableBehaviour); ok {
 		return d.Hurt(e, damage, src)
 	}
 	return 0, false
 }
 
+// ExplodableBehaviour may be implemented by a Behaviour to react to an explosion hitting its entity, for
+// example by being blasted away or by exploding too. Ent.Explode dispatches to it.
+type ExplodableBehaviour interface {
+	// Explode reacts to an explosion with the source and the impact on the entity passed.
+	Explode(e *Ent, src world.ExplosionSource, impact float64)
+}
+
 // Explode propagates the explosion behaviour of the underlying Behaviour.
 func (e *Ent) Explode(src world.ExplosionSource, impact float64) {
-	if expl, ok := e.Behaviour().(interface {
-		Explode(e *Ent, src world.ExplosionSource, impact float64)
-	}); ok {
+	if expl, ok := e.Behaviour().(ExplodableBehaviour); ok {
 		expl.Explode(e, src, impact)
 	}
 }
@@ -226,7 +231,7 @@ func (e *Ent) TravelThroughPortal(tx *world.Tx, target world.Dimension) {
 
 // portalTravelComputer returns the behaviour's portal travel state, if any.
 func (e *Ent) portalTravelComputer() *PortalTravelComputer {
-	if b, ok := e.Behaviour().(portalTravelComputerProvider); ok {
+	if b, ok := e.Behaviour().(PortalTravelComputerProvider); ok {
 		return b.PortalTravelComputer()
 	}
 	return nil
