@@ -38,9 +38,11 @@ func (e *Ent) H() *world.EntityHandle {
 	return e.handle
 }
 
-// Behaviour returns the Behaviour of the entity, stored in the entity data of its handle.
+// Behaviour returns the Behaviour of the entity, stored in the entity data of its handle. Nil is returned
+// if the entity data holds no Behaviour.
 func (e *Ent) Behaviour() Behaviour {
-	return e.data.Data.(Behaviour)
+	b, _ := e.data.Data.(Behaviour)
+	return b
 }
 
 // Unwrap returns the Ent itself. It is promoted by entities that embed Ent, so that the underlying Ent can
