@@ -80,14 +80,13 @@ func (cfg Config) Apply(data *world.EntityData) {
 		flightSpeed:         0.05,
 		verticalFlightSpeed: 1.0,
 		scale:               1.0,
-		airSupplyTicks:      conf.AirSupply,
-		maxAirSupplyTicks:   conf.MaxAirSupply,
-		breathing:           true,
+		air:                 entity.NewAirSupply(time.Duration(conf.MaxAirSupply) * time.Second / 20),
 		nameTag:             conf.Name,
 		alwaysShowNameTag:   true,
 		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
 	}
+	pdata.air.SetSupply(time.Duration(conf.AirSupply) * time.Second / 20)
 	playerUUID := conf.UUID
 	pdata.portalTravel = &entity.PortalTravelComputer{
 		Instantaneous: func(_, target world.Dimension) bool {

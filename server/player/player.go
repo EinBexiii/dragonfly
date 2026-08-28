@@ -13,7 +13,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/cmd"
 	"github.com/df-mc/dragonfly/server/entity"
 	"github.com/df-mc/dragonfly/server/entity/effect"
@@ -69,9 +68,7 @@ type playerData struct {
 	fireTicks    int64
 	fallDistance float64
 
-	breathing         bool
-	airSupplyTicks    int
-	maxAirSupplyTicks int
+	air *entity.AirSupply
 
 	cooldowns map[string]time.Time
 
@@ -1992,7 +1989,7 @@ func (p *Player) breakTime(pos cube.Pos) time.Duration {
 func (p *Player) breakContext() block.BreakContext {
 	_, aquaAffinity := p.Armour().Helmet().Enchantment(enchantment.AquaAffinity)
 	ctx := block.BreakContext{
-		Underwater:   p.insideOfWater(),
+		Underwater:   entity.Submerged(p, p.tx),
 		AquaAffinity: aquaAffinity,
 		Airborne:     !p.OnGround(),
 		Flying:       p.Flying(),
@@ -2653,7 +2650,7 @@ func (p *Player) Tick(tx *world.Tx, current int64) {
 	if p.Position()[1] < float64(p.tx.Range()[0]) {
 		p.Hurt(4, entity.VoidDamageSource{})
 	}
-	if p.insideOfSolid() {
+	if entity.InsideOfSolid(p, p.tx) {
 		p.Hurt(1, entity.SuffocationDamageSource{})
 	}
 
@@ -2769,20 +2766,11 @@ func (p *Player) RemoveViewLayer(entity world.Entity) {
 
 // tickAirSupply tick's the player's air supply, consuming it when underwater, and replenishing it when out of water.
 func (p *Player) tickAirSupply() {
-	if !p.canBreathe() {
-		if r, ok := p.Armour().Helmet().Enchantment(enchantment.Respiration); ok && rand.Float64() < enchantment.Respiration.Chance(r.Level()) {
-			// respiration grants a chance to avoid drowning damage every tick.
-			return
-		}
-		if p.airSupplyTicks -= 1; p.airSupplyTicks <= -20 {
-			p.airSupplyTicks = 0
-			p.Hurt(2, entity.DrowningDamageSource{})
-		}
-		p.breathing = false
-		p.updateState()
-	} else if !p.breathing && p.airSupplyTicks < p.maxAirSupplyTicks {
-		p.airSupplyTicks = min(p.airSupplyTicks+5, p.maxAirSupplyTicks)
-		p.breathing = p.airSupplyTicks == p.maxAirSupplyTicks
+	drowned, changed := p.air.Tick(p.canBreathe(), p.Armour().Helmet())
+	if drowned {
+		p.Hurt(2, entity.DrowningDamageSource{})
+	}
+	if changed {
 		p.updateState()
 	}
 }
@@ -2839,23 +2827,23 @@ func (p *Player) starve() {
 
 // AirSupply returns the player's remaining air supply.
 func (p *Player) AirSupply() time.Duration {
-	return time.Duration(p.airSupplyTicks) * time.Second / 20
+	return p.air.Supply()
 }
 
 // SetAirSupply sets the player's remaining air supply.
 func (p *Player) SetAirSupply(duration time.Duration) {
-	p.airSupplyTicks = int(duration.Milliseconds() / 50)
+	p.air.SetSupply(duration)
 	p.updateState()
 }
 
 // MaxAirSupply returns the player's maximum air supply.
 func (p *Player) MaxAirSupply() time.Duration {
-	return time.Duration(p.maxAirSupplyTicks) * time.Second / 20
+	return p.air.Max()
 }
 
 // SetMaxAirSupply sets the player's maximum air supply.
 func (p *Player) SetMaxAirSupply(duration time.Duration) {
-	p.maxAirSupplyTicks = int(duration.Milliseconds() / 50)
+	p.air.SetMax(duration)
 	p.updateState()
 }
 
@@ -2864,52 +2852,7 @@ func (p *Player) canBreathe() bool {
 	canTakeDamage := p.GameMode().AllowsTakingDamage()
 	_, waterBreathing := p.effects.Effect(effect.WaterBreathing)
 	_, conduitPower := p.effects.Effect(effect.ConduitPower)
-	return !canTakeDamage || waterBreathing || conduitPower || (!p.insideOfWater() && !p.insideOfSolid())
-}
-
-// breathingDistanceBelowEyes is the lowest distance the player can be in water and still be able to breathe based on
-// the player's eye height.
-const breathingDistanceBelowEyes = 0.11111111
-
-// insideOfWater returns true if the player is currently underwater.
-func (p *Player) insideOfWater() bool {
-	pos := cube.PosFromVec3(entity.EyePosition(p))
-	if l, ok := p.tx.Liquid(pos); ok {
-		if _, ok := l.(block.Water); ok {
-			d := float64(l.SpreadDecay()) + 1
-			if l.LiquidFalling() {
-				d = 1
-			}
-			return p.Position().Y() < (pos.Side(cube.FaceUp).Vec3().Y())-(d/9-breathingDistanceBelowEyes)
-		}
-	}
-	return false
-}
-
-// insideOfSolid returns true if the player is inside a solid block.
-func (p *Player) insideOfSolid() bool {
-	pos := cube.PosFromVec3(entity.EyePosition(p))
-	b, box := p.tx.Block(pos), p.handle.Type().BBox(p).Translate(p.Position())
-
-	_, solid := b.Model().(model.Solid)
-	if !solid {
-		// Not solid.
-		return false
-	}
-	d, diffuses := b.(block.LightDiffuser)
-	if diffuses && d.LightDiffusionLevel() == 0 {
-		// Transparent.
-		return false
-	}
-	if immune, ok := b.(block.NonSuffocating); ok && immune.PreventsSuffocation() {
-		return false
-	}
-	for _, blockBox := range b.Model().BBox(pos, p.tx) {
-		if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
-			return true
-		}
-	}
-	return false
+	return !canTakeDamage || waterBreathing || conduitPower || (!entity.Submerged(p, p.tx) && !entity.InsideOfSolid(p, p.tx))
 }
 
 // checkCollisions checks the player's block collisions.
@@ -3355,8 +3298,8 @@ func (p *Player) Data() Config {
 		Food:                p.hunger.foodLevel,
 		Exhaustion:          p.hunger.exhaustionLevel,
 		Saturation:          p.hunger.saturationLevel,
-		AirSupply:           p.airSupplyTicks,
-		MaxAirSupply:        p.maxAirSupplyTicks,
+		AirSupply:           int(p.air.Supply() / (time.Second / 20)),
+		MaxAirSupply:        int(p.air.Max() / (time.Second / 20)),
 		EnchantmentSeed:     p.enchantSeed,
 		Experience:          p.experience.Experience(),
 		HeldSlot:            int(*p.heldSlot),
