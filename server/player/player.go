@@ -737,7 +737,12 @@ func (p *Player) Explode(src world.ExplosionSource, impact float64) {
 	explosionPos := src.Position()
 	diff := p.Position().Sub(explosionPos)
 	p.Hurt(entity.ExplosionDamage(src.Size(), impact), entity.ExplosionDamageSource{Source: src})
-	p.knockBack(explosionPos, impact, diff[1]/diff.Len()*impact)
+
+	height := 0.0
+	if l := diff.Len(); l != 0 {
+		height = diff[1] / l * impact
+	}
+	p.knockBack(explosionPos, impact, height)
 }
 
 // SetAbsorption sets the absorption health of a player. This extra health shows as golden hearts and do not
@@ -2963,29 +2968,7 @@ func (p *Player) checkBlockCollisions(vel mgl64.Vec3) {
 
 // checkEntityInsiders checks if the player is colliding with any EntityInsider blocks.
 func (p *Player) checkEntityInsiders(entityBBox cube.BBox) {
-	box := entityBBox.Grow(-0.0001)
-	low, high := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
-
-	for y := low[1]; y <= high[1]; y++ {
-		for x := low[0]; x <= high[0]; x++ {
-			for z := low[2]; z <= high[2]; z++ {
-				blockPos := cube.Pos{x, y, z}
-				b := p.tx.Block(blockPos)
-				if collide, ok := b.(block.EntityInsider); ok {
-					collide.EntityInside(blockPos, p.tx, p)
-					if _, liquid := b.(world.Liquid); liquid {
-						continue
-					}
-				}
-
-				if l, ok := p.tx.Liquid(blockPos); ok {
-					if collide, ok := l.(block.EntityInsider); ok {
-						collide.EntityInside(blockPos, p.tx, p)
-					}
-				}
-			}
-		}
-	}
+	entity.CheckEntityInsiders(p.tx, p, entityBBox)
 }
 
 // checkEntitySteppers checks if the player is standing on any EntityStepper blocks.
@@ -2993,16 +2976,7 @@ func (p *Player) checkEntitySteppers() {
 	if !p.OnGround() {
 		return
 	}
-	low, high := p.blocksUnder()
-	for x := low[0]; x <= high[0]; x++ {
-		for z := low[2]; z <= high[2]; z++ {
-			pos := cube.Pos{x, low[1], z}
-			if stepper, ok := p.tx.Block(pos).(block.EntityStepper); ok {
-				stepper.EntityStepOn(pos, p.tx, p)
-				return
-			}
-		}
-	}
+	entity.CheckEntitySteppers(p.tx, p, Type.BBox(p).Translate(p.Position()))
 }
 
 // checkOnGround checks if the player is currently considered to be on the ground.
