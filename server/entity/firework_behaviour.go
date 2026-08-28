@@ -117,7 +117,7 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 	}
 
 	force := float64(len(explosions)*2) + 5.0
-	for victim := range filterLiving(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos).Grow(5.25))) {
+	for victim := range filterDamageable(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos).Grow(5.25))) {
 		tpos := victim.Position()
 		dist := pos.Sub(tpos).Len()
 		if dist > 5.0 {
@@ -128,11 +128,26 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 		src := ProjectileDamageSource{Owner: owner, Projectile: e}
 
 		if pos == tpos {
-			victim.(Living).Hurt(dmg, src)
+			HurtEntity(victim, dmg, src)
 			continue
 		}
 		if _, ok := trace.Perform(pos, tpos, tx, victim.H().Type().BBox(victim).Grow(0.3), nil); ok {
-			victim.(Living).Hurt(dmg, src)
+			HurtEntity(victim, dmg, src)
+		}
+	}
+}
+
+// filterDamageable filters an entity sequence down to the entities that may be damaged, as reported by
+// DamageableEntity.
+func filterDamageable(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
+	return func(yield func(world.Entity) bool) {
+		for e := range seq {
+			if !DamageableEntity(e) {
+				continue
+			}
+			if !yield(e) {
+				return
+			}
 		}
 	}
 }
