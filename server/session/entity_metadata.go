@@ -40,6 +40,11 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	if ent, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		if b := ent.Behaviour(); b != nil {
 			s.addSpecificMetadata(b, m)
+			// A Behaviour may contribute raw metadata of its own by implementing EncodeEntityMetadata. It
+			// runs last so it may override the generic metadata above.
+			if enc, ok := b.(interface{ EncodeEntityMetadata(m map[uint32]any) }); ok {
+				enc.EncodeEntityMetadata(m)
+			}
 		}
 	}
 	return m
