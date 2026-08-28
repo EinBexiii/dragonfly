@@ -167,6 +167,10 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 			return 0, false
 		}
 	}
+	ctx := e.tx.Event()
+	if e.tx.World().Handler().HandleEntityHurt(ctx, e, &damage, src); ctx.Cancelled() {
+		return 0, false
+	}
 	if h, ok := e.Behaviour().(LivingHurtHandler); ok && h.HandleHurt(e, &damage, src) {
 		return 0, false
 	}

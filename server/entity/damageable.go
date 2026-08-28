@@ -34,8 +34,8 @@ func HurtEntity(e world.Entity, damage float64, src world.DamageSource) (n float
 	}
 	if w, ok := e.(wrappedEnt); ok {
 		ent := w.Unwrap()
-		if d, ok := ent.Behaviour().(DamageableBehaviour); ok {
-			n, vulnerable = d.Hurt(ent, damage, src)
+		if _, ok := ent.Behaviour().(DamageableBehaviour); ok {
+			n, vulnerable = ent.Hurt(damage, src)
 			return n, vulnerable, true
 		}
 	}

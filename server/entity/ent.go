@@ -73,10 +73,15 @@ type wrappedEnt interface {
 // entity as invulnerable otherwise. It gives entities that are damageable without being alive the same Hurt
 // method surface that code dealing damage asserts on Living entities.
 func (e *Ent) Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool) {
-	if d, ok := e.Behaviour().(DamageableBehaviour); ok {
-		return d.Hurt(e, damage, src)
+	d, ok := e.Behaviour().(DamageableBehaviour)
+	if !ok {
+		return 0, false
 	}
-	return 0, false
+	ctx := e.tx.Event()
+	if e.tx.World().Handler().HandleEntityHurt(ctx, e, &damage, src); ctx.Cancelled() {
+		return 0, false
+	}
+	return d.Hurt(e, damage, src)
 }
 
 // ExplodableBehaviour may be implemented by a Behaviour to react to an explosion hitting its entity.
