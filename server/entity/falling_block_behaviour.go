@@ -98,7 +98,7 @@ func (f *FallingBlockBehaviour) damageEntities(e *Ent, d damager, pos mgl64.Vec3
 	if dist <= 0 {
 		return
 	}
-	dmg := math.Min(math.Floor(dist*damagePerBlock), maxDamage)
+	dmg := min(math.Floor(dist*damagePerBlock), maxDamage)
 	src := block.DamageSource{Block: f.block}
 
 	for e := range filterDamageable(tx.EntitiesWithin(e.H().Type().BBox(e).Translate(pos).Grow(0.05))) {

@@ -1,6 +1,10 @@
 package entity
 
-import "github.com/df-mc/dragonfly/server/world"
+import (
+	"iter"
+
+	"github.com/df-mc/dragonfly/server/world"
+)
 
 // DamageableBehaviour may be implemented by a Behaviour to let its entity take damage without implementing
 // the full Living interface. HurtEntity and Ent.Hurt dispatch to it.
@@ -38,4 +42,19 @@ func DamageableEntity(e world.Entity) bool {
 		return ok
 	}
 	return false
+}
+
+// filterDamageable filters an entity sequence down to the entities that may be damaged, as reported by
+// DamageableEntity.
+func filterDamageable(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
+	return func(yield func(world.Entity) bool) {
+		for e := range seq {
+			if !DamageableEntity(e) {
+				continue
+			}
+			if !yield(e) {
+				return
+			}
+		}
+	}
 }

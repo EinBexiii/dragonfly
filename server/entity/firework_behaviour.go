@@ -5,7 +5,6 @@ import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
-	"iter"
 	"math"
 	"time"
 )
@@ -131,34 +130,6 @@ func (f *FireworkBehaviour) explode(e *Ent, tx *world.Tx) {
 		}
 		if _, ok := trace.Perform(pos, tpos, tx, victim.H().Type().BBox(victim).Grow(0.3), nil); ok {
 			HurtEntity(victim, dmg, src)
-		}
-	}
-}
-
-// filterDamageable filters an entity sequence down to the entities that may be damaged, as reported by
-// DamageableEntity.
-func filterDamageable(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
-	return func(yield func(world.Entity) bool) {
-		for e := range seq {
-			if !DamageableEntity(e) {
-				continue
-			}
-			if !yield(e) {
-				return
-			}
-		}
-	}
-}
-
-func filterLiving(seq iter.Seq[world.Entity]) iter.Seq[world.Entity] {
-	return func(yield func(world.Entity) bool) {
-		for e := range seq {
-			if _, living := e.(Living); !living {
-				continue
-			}
-			if !yield(e) {
-				return
-			}
 		}
 	}
 }
