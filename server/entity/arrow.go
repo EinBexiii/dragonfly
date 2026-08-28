@@ -59,7 +59,7 @@ var ArrowType arrowType
 type arrowType struct{}
 
 func (t arrowType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &Ent{tx: tx, handle: handle, data: data}
+	return Open(tx, handle, data)
 }
 
 func (arrowType) EncodeEntity() string { return "minecraft:arrow" }

@@ -115,7 +115,7 @@ var LightningType lightningType
 type lightningType struct{}
 
 func (t lightningType) Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) world.Entity {
-	return &Ent{tx: tx, handle: handle, data: data}
+	return Open(tx, handle, data)
 }
 func (t lightningType) DecodeNBT(_ map[string]any, data *world.EntityData) {
 	data.Data = lightningConf.New()
