@@ -37,8 +37,8 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
 	s.addSpecificMetadata(e, m)
-	if ent, ok := e.(*entity.Ent); ok {
-		s.addSpecificMetadata(ent.Behaviour(), m)
+	if ent, ok := e.(interface{ Unwrap() *entity.Ent }); ok {
+		s.addSpecificMetadata(ent.Unwrap().Behaviour(), m)
 	}
 	return m
 }

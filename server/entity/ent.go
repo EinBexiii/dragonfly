@@ -41,6 +41,16 @@ func (e *Ent) Behaviour() Behaviour {
 	return e.data.Data.(Behaviour)
 }
 
+// Unwrap returns the Ent itself. It is promoted by entities that embed Ent, so that they may be recognised
+// wherever an underlying Ent is dispatched to.
+func (e *Ent) Unwrap() *Ent {
+	return e
+}
+
+type wrappedEnt interface {
+	Unwrap() *Ent
+}
+
 // Explode propagates the explosion behaviour of the underlying Behaviour.
 func (e *Ent) Explode(src world.ExplosionSource, impact float64) {
 	if expl, ok := e.Behaviour().(interface {

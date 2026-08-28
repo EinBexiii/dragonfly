@@ -296,8 +296,8 @@ func (t *PortalTravelComputer) finishTravel(e Traveller, pos mgl64.Vec3, source,
 // handlePortalTravel dispatches portal travel hooks to Ent behaviours and
 // non-Ent travellers that implement portalTravelHandler.
 func handlePortalTravel(e Traveller, source, destination world.Dimension) {
-	if ent, ok := e.(*Ent); ok {
-		if h, ok := ent.Behaviour().(portalTravelHandler); ok {
+	if w, ok := e.(wrappedEnt); ok {
+		if h, ok := w.Unwrap().Behaviour().(portalTravelHandler); ok {
 			h.HandlePortalTravel(source, destination)
 		}
 		return
