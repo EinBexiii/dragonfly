@@ -60,7 +60,7 @@
 // with Ent.UpdateState after changing state it reports. A behaviour contributes raw metadata values to
 // viewers by implementing EncodeEntityMetadata(m map[uint32]any). Damage to
 // arbitrary entities is dealt through HurtEntity, and DamageableEntity reports whether an entity can take
-// damage at all.
+// damage at all. The world's Handler may change or cancel damage to any entity through HandleEntityHurt.
 //
 // The DecodeNBT method of a world.EntityType must always store a Behaviour in the world.EntityData passed,
 // like its Open-time config does: an entity loaded from disk is otherwise opened without a Behaviour and
