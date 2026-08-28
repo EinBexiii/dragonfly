@@ -2,6 +2,7 @@ package entity
 
 import (
 	"iter"
+	"math"
 
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/world"
@@ -78,6 +79,12 @@ func KnockBackVector(pos, src mgl64.Vec3, force, height float64) mgl64.Vec3 {
 	}
 	velocity[1] = height
 	return velocity
+}
+
+// ExplosionDamage returns the damage an explosion of the size passed deals to an entity exposed to it with
+// the impact passed, following the vanilla formula.
+func ExplosionDamage(size, impact float64) float64 {
+	return math.Floor((impact*impact+impact)*3.5*size*2 + 1)
 }
 
 // filterLiving filters an entity sequence down to the entities that implement Living.
