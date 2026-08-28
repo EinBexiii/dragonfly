@@ -568,46 +568,7 @@ func (p *Player) updateFallState(distanceThisTick float64) {
 
 // fall is called when a falling entity hits the ground.
 func (p *Player) fall(distance float64) {
-	if pos, lander, ok := p.landedOn(); ok {
-		lander.EntityLand(pos, p.tx, p, &distance)
-	}
-	dmg := distance - 3
-	if boost, ok := p.Effect(effect.JumpBoost); ok {
-		dmg -= float64(boost.Level())
-	}
-	if dmg < 0.5 {
-		return
-	}
-	p.Hurt(math.Ceil(dmg), entity.FallDamageSource{})
-}
-
-// landedOn returns the first block.EntityLander the Player came to rest on, along with its position.
-func (p *Player) landedOn() (cube.Pos, block.EntityLander, bool) {
-	low, high := p.blocksUnder()
-	for x := low[0]; x <= high[0]; x++ {
-		for z := low[2]; z <= high[2]; z++ {
-			pos := cube.Pos{x, low[1], z}
-			if lander, ok := p.tx.Block(pos).(block.EntityLander); ok {
-				return pos, lander, true
-			}
-		}
-	}
-	return cube.Pos{}, nil, false
-}
-
-// blocksUnder returns the corners of the range of block positions directly below the Player. Every block in that range
-// is one the Player stands on: the Player is narrower than a block, so it may rest on the edge of one with its centre
-// over the block beside it, and looking only below its centre would miss the block it is actually standing on.
-func (p *Player) blocksUnder() (low, high cube.Pos) {
-	box := Type.BBox(p).Translate(p.Position())
-	// The Y is taken from the box itself, while the horizontal range is taken from a slightly smaller box so that a
-	// Player resting exactly on the boundary between two blocks does not reach into the column beside the one it
-	// stands on.
-	y := int(math.Floor(box.Min()[1] - 0.0001))
-	horizontal := box.Grow(-0.0001)
-	low, high = cube.PosFromVec3(horizontal.Min()), cube.PosFromVec3(horizontal.Max())
-	low[1], high[1] = y, y
-	return low, high
+	entity.Fall(p, p.tx, p.effects, distance)
 }
 
 // Hurt hurts the player for a given amount of damage. The source passed

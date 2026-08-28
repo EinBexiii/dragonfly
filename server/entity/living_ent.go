@@ -397,23 +397,17 @@ func (e *LivingEnt) ResetFallDistance() {
 // jump boost effect, is dealt as fall damage.
 func (e *LivingEnt) UpdateFallState(deltaY float64, onGround bool) {
 	s := e.state()
-	if onGround {
-		if s.FallDistance > 0 {
-			distance := s.FallDistance
-			s.FallDistance = 0
-			CheckEntityLanders(e.tx, e, e.H().Type().BBox(e).Translate(e.data.Pos), &distance)
-
-			if boost, ok := s.Effects.Effect(effect.JumpBoost); ok {
-				distance -= float64(boost.Level())
-			}
-			if damage := distance - 3; damage > 0 {
-				e.Hurt(damage, FallDamageSource{})
-			}
-		}
-		return
-	}
-	if deltaY < 0 {
+	switch {
+	case onGround:
 		s.FallDistance -= deltaY
+		if s.FallDistance > 3 {
+			Fall(e, e.tx, s.Effects, s.FallDistance)
+		}
+		s.FallDistance = 0
+	case deltaY < 0 && deltaY < s.FallDistance:
+		s.FallDistance -= deltaY
+	default:
+		s.FallDistance = 0
 	}
 }
 
