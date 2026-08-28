@@ -17,9 +17,9 @@ type Behaviour interface {
 	Tick(e *Ent, tx *world.Tx) *Movement
 }
 
-// Ent is a world.Entity implementation that allows entity implementations to
-// share a lot of code. It is currently under development and is prone to
-// (breaking) changes.
+// Ent is the live form of an entity within a single world.Tx: it is recreated through a world.EntityType's
+// Open method for every transaction that touches the entity. It carries the base plumbing shared by all
+// entity implementations. Persistent state must live in the entity's Behaviour, never in the Ent itself.
 type Ent struct {
 	tx                *world.Tx
 	handle            *world.EntityHandle
@@ -33,16 +33,18 @@ func Open(tx *world.Tx, handle *world.EntityHandle, data *world.EntityData) *Ent
 	return &Ent{tx: tx, handle: handle, data: data}
 }
 
+// H returns the world.EntityHandle of the entity: its persistent form that outlives the transaction.
 func (e *Ent) H() *world.EntityHandle {
 	return e.handle
 }
 
+// Behaviour returns the Behaviour of the entity, stored in the entity data of its handle.
 func (e *Ent) Behaviour() Behaviour {
 	return e.data.Data.(Behaviour)
 }
 
-// Unwrap returns the Ent itself. It is promoted by entities that embed Ent, such as LivingEnt, so that the
-// underlying Ent can be recognised wherever behaviour hooks are dispatched.
+// Unwrap returns the Ent itself. It is promoted by entities that embed Ent, so that the underlying Ent can
+// be recognised wherever behaviour hooks are dispatched.
 func (e *Ent) Unwrap() *Ent {
 	return e
 }
@@ -52,9 +54,9 @@ type wrappedEnt interface {
 	Unwrap() *Ent
 }
 
-// Hurt dispatches damage to the entity's Behaviour if it implements the DamageableBehaviour Hurt method
-// and reports the entity as invulnerable otherwise. Blocks dealing environmental damage assert this method,
-// so it makes entities such as end crystals vulnerable to them without implementing Living.
+// Hurt dispatches damage to the entity's Behaviour if it implements DamageableBehaviour and reports the
+// entity as invulnerable otherwise. It gives entities that are damageable without being alive the same Hurt
+// method surface that code dealing damage asserts on Living entities.
 func (e *Ent) Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool) {
 	if d, ok := e.Behaviour().(DamageableBehaviour); ok {
 		return d.Hurt(e, damage, src)
@@ -62,8 +64,8 @@ func (e *Ent) Hurt(damage float64, src world.DamageSource) (n float64, vulnerabl
 	return 0, false
 }
 
-// ExplodableBehaviour may be implemented by a Behaviour to react to an explosion hitting its entity, for
-// example by being blasted away or by exploding too. Ent.Explode dispatches to it.
+// ExplodableBehaviour may be implemented by a Behaviour to react to an explosion hitting its entity.
+// Ent.Explode dispatches to it.
 type ExplodableBehaviour interface {
 	// Explode reacts to an explosion with the source and the impact on the entity passed.
 	Explode(e *Ent, src world.ExplosionSource, impact float64)
@@ -190,8 +192,11 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 
 	y := e.data.Pos[1]
 	if y < float64(tx.Range()[0]) && current%10 == 0 {
-		_ = e.Close()
-		return
+		// Living entities are hurt by the void in LivingEnt.Tick instead of vanishing silently.
+		if _, living := e.Behaviour().(LivingBehaviour); !living {
+			_ = e.Close()
+			return
+		}
 	}
 	e.SetOnFire(e.OnFireDuration() - time.Second/20)
 
