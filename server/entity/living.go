@@ -53,3 +53,16 @@ type Living interface {
 	// SetSpeed sets the speed of an entity to a new value.
 	SetSpeed(float64)
 }
+
+// KnockBackVector returns the velocity that knocks back an entity at pos away from src with the force and
+// height passed.
+func KnockBackVector(pos, src mgl64.Vec3, force, height float64) mgl64.Vec3 {
+	velocity := pos.Sub(src)
+	velocity[1] = 0
+
+	if velocity.Len() != 0 {
+		velocity = velocity.Normalize().Mul(force)
+	}
+	velocity[1] = height
+	return velocity
+}

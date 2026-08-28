@@ -769,14 +769,7 @@ func (p *Player) KnockBack(src mgl64.Vec3, force, height float64) {
 // knockBack is an unexported function that is used to knock the player back. This function does not check if the player
 // can take damage or not.
 func (p *Player) knockBack(src mgl64.Vec3, force, height float64) {
-	velocity := p.Position().Sub(src)
-	velocity[1] = 0
-
-	if velocity.Len() != 0 {
-		velocity = velocity.Normalize().Mul(force)
-	}
-	velocity[1] = height
-
+	velocity := entity.KnockBackVector(p.Position(), src, force, height)
 	p.SetVelocity(velocity.Mul(1 - p.Armour().KnockBackResistance()))
 }
 
