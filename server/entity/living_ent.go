@@ -4,8 +4,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/entity/effect"
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/item/enchantment"
@@ -440,13 +438,7 @@ func (e *LivingEnt) Tick(tx *world.Tx, current int64) {
 	if e.data.Pos[1] < float64(tx.Range()[0]) && current%10 == 0 {
 		e.Hurt(4, VoidDamageSource{})
 	}
-	if e.OnFireDuration() > 0 {
-		if tx.RainingAt(cube.PosFromVec3(e.data.Pos)) {
-			e.Extinguish()
-		} else if current%20 == 0 {
-			e.Hurt(1, block.FireDamageSource{})
-		}
-	}
+	TickOnFire(e, tx)
 	if current%10 == 0 && InsideOfSolid(e, tx) {
 		e.Hurt(1, SuffocationDamageSource{})
 	}

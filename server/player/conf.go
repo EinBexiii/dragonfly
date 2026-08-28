@@ -83,7 +83,6 @@ func (cfg Config) Apply(data *world.EntityData) {
 		air:                 entity.NewAirSupply(time.Duration(conf.MaxAirSupply) * time.Second / 20),
 		nameTag:             conf.Name,
 		alwaysShowNameTag:   true,
-		fireTicks:           conf.FireTicks,
 		fallDistance:        conf.FallDistance,
 	}
 	pdata.air.SetSupply(time.Duration(conf.AirSupply) * time.Second / 20)
@@ -112,6 +111,7 @@ func (cfg Config) Apply(data *world.EntityData) {
 	}
 	pdata.hunger.foodLevel, pdata.hunger.foodTick, pdata.hunger.exhaustionLevel, pdata.hunger.saturationLevel = conf.Food, conf.FoodTick, conf.Exhaustion, conf.Saturation
 	pdata.experience.Add(conf.Experience)
+	data.FireDuration = time.Duration(conf.FireTicks) * time.Second / 20
 	data.Data = pdata
 }
 
