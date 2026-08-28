@@ -134,10 +134,22 @@ func (e *Ent) SetAlwaysShowNameTag(alwaysShow bool) {
 	e.updateState()
 }
 
+// UpdateState resends the entity's metadata to all viewers of the entity.
+func (e *Ent) UpdateState() {
+	e.updateState()
+}
+
 // updateState updates the state of the entity for all viewers of the entity.
 func (e *Ent) updateState() {
 	for _, v := range e.tx.Viewers(e.data.Pos) {
 		v.ViewEntityState(e)
+	}
+}
+
+// PlayAction plays a world.EntityAction, such as a hurt or death animation, for all viewers of the entity.
+func (e *Ent) PlayAction(a world.EntityAction) {
+	for _, v := range e.tx.Viewers(e.data.Pos) {
+		v.ViewEntityAction(e, a)
 	}
 }
 
