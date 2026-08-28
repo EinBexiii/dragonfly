@@ -89,7 +89,7 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
 		}
 	}
-	if o, ok := e.(orb); ok {
+	if o, ok := e.(orb); ok && metadataAllowedFor(e, entity.ExperienceOrbType) {
 		m[protocol.EntityDataKeyValue] = int32(o.Experience())
 	}
 	if f, ok := e.(firework); ok {
@@ -346,4 +346,12 @@ type variable interface {
 
 type markVariable interface {
 	MarkVariant() int32
+}
+
+// metadataAllowedFor reports whether metadata read from e may be sent: e either is no world.Entity, or an
+// entity of the world.EntityType passed. It filters metadata that a Behaviour reports through a method
+// another entity kind happens to share.
+func metadataAllowedFor(e any, t world.EntityType) bool {
+	ent, ok := e.(world.Entity)
+	return !ok || ent.H().Type() == t
 }
