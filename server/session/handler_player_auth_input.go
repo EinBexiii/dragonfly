@@ -15,12 +15,6 @@ import (
 // PlayerAuthInputHandler handles the PlayerAuthInput packet.
 type PlayerAuthInputHandler struct{}
 
-// maxMountDrift is how far a rider's prediction of its mount may run from where
-// the server has it before the server sends its own answer. A ride is never
-// exact, so a small gap is left alone; anything past it is the prediction
-// coming loose.
-const maxMountDrift = 1.0
-
 // Handle ...
 func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAuthInput)
@@ -37,13 +31,11 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 // goes wherever the mount is rather than where it reports itself: the two are
 // one body while it rides.
 //
-// A mount the client drives itself reports its position here rather than the
-// rider's, in the space the mount is sent in, along with the rotation it turned
-// it to. Both are recorded as a request: a client simulates its mount without
-// the ground under it, so where the mount really ends up stays the mount's own
-// tick to decide. Once the two have drifted apart the server's answer is sent
-// on its own, which is what ends the drift; a mount standing its ground
-// broadcasts nothing, so without that the client would never hear from it.
+// A mount the client drives itself reports that mount's position here rather
+// than the rider's, in the space the mount is sent in, along with the rotation
+// it turned it to. Both are recorded as a request rather than applied: whether
+// the mount may go there is the mount's own tick to decide, and a request it
+// refuses is answered there and then.
 func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) bool {
 	m := c.H().Mount()
 	if m == nil {
@@ -53,15 +45,13 @@ func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Sess
 	if !ok {
 		return false
 	}
-	actual := mount.Position()
 	if pos, rot, ok := h.predictedMount(pk, s, mount); ok {
-		m.Drive(true, pos, rot)
-		if actual.Sub(pos).Len() > maxMountDrift {
-			s.ViewEntityDisplacement(mount, actual, mount.Rotation(), true)
-		}
+		m.Drive(true, pos, rot, pk.Tick)
 	} else {
-		m.Drive(false, mgl64.Vec3{}, cube.Rotation{})
+		m.Drive(false, mgl64.Vec3{}, cube.Rotation{}, 0)
 	}
+	h.correctMount(s, mount)
+	actual := mount.Position()
 	s.moving = true
 	yaw, pitch := c.Rotation().Elem()
 	c.Move(actual.Sub(c.Position()), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch)
@@ -76,8 +66,26 @@ func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Sess
 	return true
 }
 
+// correctMount tells the rider's client where its mount really went, for a
+// request the mount turned down. It is the answer the client is built to take:
+// it re-runs its own prediction from the position given for the tick named,
+// rather than being put somewhere it will derive itself away from again.
+func (h PlayerAuthInputHandler) correctMount(s *Session, mount world.Entity) {
+	pos, rot, onGround, tick, ok := mount.H().Refusal()
+	if !ok {
+		return
+	}
+	s.writePacket(&packet.CorrectPlayerMovePrediction{
+		PredictionType: packet.PredictionTypeVehicle,
+		Position:       vec64To32(pos.Add(entityOffset(mount))),
+		Rotation:       mgl32.Vec2{float32(rot.Pitch()), float32(rot.Yaw())},
+		OnGround:       onGround,
+		Tick:           tick,
+	})
+}
+
 // predictedMount returns where the rider's client predicts the mount it drives,
-// and reports whether it drives it at all. The position is the one the mount is
+// and reports whether it drives one at all. The position is the one the mount is
 // sent at rather than the rider's, so the mount's own offset comes back off it.
 func (h PlayerAuthInputHandler) predictedMount(pk *packet.PlayerAuthInput, s *Session, mount world.Entity) (mgl64.Vec3, cube.Rotation, bool) {
 	id, ok := pk.ClientPredictedVehicle.Value()
@@ -86,7 +94,6 @@ func (h PlayerAuthInputHandler) predictedMount(pk *packet.PlayerAuthInput, s *Se
 	}
 	rot, ok := pk.VehicleRotation.Value()
 	if !ok {
-		// The client has just got on or off and has no rotation to give yet.
 		return mgl64.Vec3{}, cube.Rotation{}, false
 	}
 	pos := vec32To64(pk.Position).Sub(entityOffset(mount))

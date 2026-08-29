@@ -324,6 +324,16 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		switch id {
 		case protocol.ContainerLevelEntity:
 			return s.openedWindow.Load(), true
+		case protocol.ContainerTradeIngredientOne, protocol.ContainerTradeIngredientTwo,
+			protocol.ContainerTradeResultPreview, protocol.ContainerTradeTwoIngredientOne,
+			protocol.ContainerTradeTwoIngredientTwo, protocol.ContainerTradeTwoResultPreview:
+			// The slots a trade lays its items out in are the session's own UI
+			// slots, the way an anvil's and a smithing table's are. Leaving
+			// them unmapped rejects the whole request the client sends to
+			// strike a deal, which is why the payment jumps back.
+			if s.openedContainerID.Load() == protocol.ContainerTypeTrade {
+				return s.ui, true
+			}
 		case protocol.ContainerHorseEquip:
 			if s.openedEntity.Load() != nil {
 				return s.openedWindow.Load(), true

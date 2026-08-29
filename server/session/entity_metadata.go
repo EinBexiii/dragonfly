@@ -37,9 +37,13 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
 	if e.H().Mount() != nil {
+		// A rider is seated by an offset it carries itself, along with the
+		// rotation its seat locks it to. The lock is written out even when it
+		// locks nothing: metadata is a delta, so one left out once stays on
+		// the client for as long as the rider lives.
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
+		writeSeat(m, e.H().SeatPosition())
 	}
-	writeSeat(m, e.H().SeatPosition())
 	s.addSpecificMetadata(e, m)
 	if ent, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		if b := ent.Behaviour(); b != nil {

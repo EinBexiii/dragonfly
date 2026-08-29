@@ -22,6 +22,11 @@ func (h *ContainerCloseHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 	// claimed shuts the player out of its own inventory for good.
 	s.invOpened.Store(false)
 
+	// A window the client holds no ID for is closed with 0xff, and the answer
+	// carries the ID the server knows it by, which is what a real Bedrock
+	// server replies with.
+	windowID := pk.WindowID
+
 	var containerType byte
 	switch pk.WindowID {
 	case 0:
@@ -38,14 +43,14 @@ func (h *ContainerCloseHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 		// anything at all after that.
 		containerType = pk.ContainerType
 		if s.containerOpened.Load() {
-			containerType = byte(s.openedContainerID.Load())
+			containerType, windowID = byte(s.openedContainerID.Load()), byte(s.openedWindowID.Load())
 			s.closeCurrentContainer(tx, true)
 		}
 	default:
 		containerType = pk.ContainerType
 	}
 	s.writePacket(&packet.ContainerClose{
-		WindowID:      pk.WindowID,
+		WindowID:      windowID,
 		ContainerType: containerType,
 	})
 	return nil

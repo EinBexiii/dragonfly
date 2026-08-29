@@ -19,7 +19,16 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Co
 	case packet.InteractActionMouseOverEntity:
 		// We don't need this action.
 	case packet.InteractActionLeaveVehicle:
-		// The player sneaked while riding an entity to get off it.
+		// The player asked to get off the entity it rides. It is the mount that
+		// answers: a mount whose rider means something else by the request
+		// keeps hold of it.
+		if m := c.H().Mount(); m != nil {
+			if mount, ok := m.Entity(tx); ok {
+				if d, ok := mount.(world.Dismounter); ok && !d.AllowDismount(c) {
+					return nil
+				}
+			}
+		}
 		tx.Dismount(c)
 	case packet.InteractActionOpenInventory:
 		if m := c.H().Mount(); m != nil {

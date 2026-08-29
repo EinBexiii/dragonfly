@@ -78,6 +78,8 @@ type Session struct {
 	openedWindow                   atomic.Pointer[inventory.Inventory]
 	openedPos                      atomic.Pointer[cube.Pos]
 	openedEntity                   atomic.Pointer[world.EntityHandle]
+	tradeNetID                     atomic.Uint32
+	tradeBaseID                    atomic.Uint32
 	swingingArm                    atomic.Bool
 	changingSlot                   atomic.Bool
 	changingDimension              atomic.Bool
@@ -211,6 +213,7 @@ func (conf Config) New(conn Conn) *Session {
 	s.viewLayer = world.NewViewLayer(s)
 	s.openedWindow.Store(inventory.New(1, nil))
 	s.openedPos.Store(&cube.Pos{})
+	s.tradeNetID.Store(1)
 
 	var scoreboardName string
 	var scoreboardLines []string

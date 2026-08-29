@@ -127,7 +127,12 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			err = h.handleMineBlock(a, s, tx)
 		case *protocol.CreateStackRequestAction:
 			err = h.handleCreate(a, s, tx)
-		case *protocol.ConsumeStackRequestAction, *protocol.CraftResultsDeprecatedStackRequestAction:
+		case *protocol.ConsumeStackRequestAction:
+			// Don't do anything with this. A trade takes its own payment out
+			// of the trade slots when the deal is struck, so a customer that
+			// leaves the consume out, names a smaller count or points at
+			// something worthless changes nothing about what it pays.
+		case *protocol.CraftResultsDeprecatedStackRequestAction:
 			// Don't do anything with this.
 		default:
 			return fmt.Errorf("unhandled stack request action %#v", action)
@@ -270,20 +275,83 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 // index of the offer the player picked, raised by one.
 func (h *ItemStackRequestHandler) handleTrade(t entity.Trader, recipeNetworkID uint32, s *Session, tx *world.Tx, c Controllable) error {
 	offers, _, _ := t.TradeOffers()
-	i := int(recipeNetworkID) - 1
+	// The offers were numbered from the base the last send handed out, so the
+	// number the client picked names its place among them.
+	i := int(recipeNetworkID) - int(s.tradeBase())
 	if i < 0 || i >= len(offers) {
 		return fmt.Errorf("offer with network id %v does not exist", recipeNetworkID)
+	}
+	// The payment is checked before the deal is recorded and taken after, so a
+	// deal the trader refuses costs nothing and one it takes is always paid
+	// for. Neither step trusts the client: it lays the payment in the trade
+	// slots, but what leaves them is the server's to decide.
+	if err := h.checkPrice(offers[i], s, tx); err != nil {
+		return err
 	}
 	if !t.Trade(i, c) {
 		return fmt.Errorf("offer %v could not be made", i)
 	}
+	h.takePrice(offers[i], s, tx)
 	if err := h.createResults(s, tx, offers[i].Given); err != nil {
 		return err
 	}
-	// The offer the client shows is now one use further along and may have
-	// locked or raised the tier, so the window is sent again.
-	s.RefreshTrade(tx)
+	// Nothing is sent about the window afterwards. A capture of a real Bedrock
+	// server shows it silent through seventeen deals that both locked an offer
+	// and raised the trader's tier: the offers a customer sees are the ones it
+	// was given, and a new tier reaches it when it opens the window again.
 	return nil
+}
+
+// tradeIngredients are the slots a customer lays an offer's payment in, the two
+// the client shows at the left of a trade window.
+var tradeIngredients = [2]byte{4, 5}
+
+// checkPrice reports whether the payment an offer asks for is laid out in the
+// trade slots, without taking it: the consume actions that follow do that.
+func (h *ItemStackRequestHandler) checkPrice(o entity.Offer, s *Session, tx *world.Tx) error {
+	for i, want := range o.Wanted {
+		if want.Empty() {
+			continue
+		}
+		laid, err := h.itemInSlot(tradeSlot(i), s, tx)
+		if err != nil {
+			return err
+		}
+		if laid.Empty() || !laid.Comparable(want) || laid.Count() < want.Count() {
+			name, _ := want.Item().EncodeItem()
+			return fmt.Errorf("trade wants %v x %v, which is not laid out for it", want.Count(), name)
+		}
+	}
+	return nil
+}
+
+// takePrice takes what an offer costs out of the trade slots the customer laid
+// it in, through the request's own bookkeeping so the client stays in step.
+// checkPrice has already found the payment there, so nothing here can fail.
+func (h *ItemStackRequestHandler) takePrice(o entity.Offer, s *Session, tx *world.Tx) {
+	for i, want := range o.Wanted {
+		if want.Empty() {
+			continue
+		}
+		slot := tradeSlot(i)
+		laid, err := h.itemInSlot(slot, s, tx)
+		if err != nil {
+			continue
+		}
+		if left := laid.Count() - want.Count(); left > 0 {
+			h.setItemInSlot(slot, laid.Grow(-want.Count()), s, tx)
+		} else {
+			h.setItemInSlot(slot, item.Stack{}, s, tx)
+		}
+	}
+}
+
+// tradeSlot names the slot a customer lays the i-th half of a payment in.
+func tradeSlot(i int) protocol.StackRequestSlotInfo {
+	return protocol.StackRequestSlotInfo{
+		Container: protocol.FullContainerName{ContainerID: protocol.ContainerTradeTwoIngredientOne},
+		Slot:      tradeIngredients[i],
+	}
 }
 
 // handleMineBlock handles the action associated with a block being mined by the player. This seems to be a workaround

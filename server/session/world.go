@@ -210,11 +210,10 @@ func (s *Session) ViewEntityMovement(e world.Entity, pos mgl64.Vec3, rot cube.Ro
 		return
 	}
 	if _, _, driven := e.H().Driven(); driven && e.H().Rider() == s.ent {
-		// The rider driving a mount is the one that reported where it went.
-		// Echoing that back on every tick is what its own prediction fights,
-		// and the fight is what a rider feels as a mount shaking under it. It
-		// is answered only once the two have drifted apart, through the
-		// displacement the drift sends.
+		// The rider driving a mount is the one that reported where it went, so
+		// its own report is not sent back to it: a client predicting against
+		// its own answer is a fight it cannot win. What it does hear is the
+		// displacement its mount sends when it refuses a request.
 		return
 	}
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, false)
@@ -1661,11 +1660,7 @@ func (s *Session) OpenEntityInventory(e world.Entity, tx *world.Tx) bool {
 	s.openedPos.Store(&pos)
 	s.openedContainerID.Store(protocol.ContainerTypeHorse)
 
-	s.writePacket(&packet.ContainerOpen{
-		WindowID:                nextID,
-		ContainerType:           protocol.ContainerTypeHorse,
-		ContainerEntityUniqueID: int64(id),
-	})
+	// Like a trade window, this one opens on its contents alone.
 	data, err := nbt.MarshalEncoding(map[string]any{"slots": equipSlots(slots)}, nbt.NetworkLittleEndian)
 	if err != nil {
 		s.conf.Log.Debug("open entity inventory: encode slots: " + err.Error())
@@ -1746,34 +1741,19 @@ func (s *Session) OpenTrade(e world.Entity, customer world.Entity, tx *world.Tx)
 		w.TradeOpened(customer)
 	}
 
-	// The window is announced like any other container before its contents
-	// follow. Without it the client never books the window, and the one it
-	// cannot account for locks every window that comes after.
-	s.writePacket(&packet.ContainerOpen{
-		WindowID:                nextID,
-		ContainerType:           protocol.ContainerTypeTrade,
-		ContainerEntityUniqueID: int64(id),
-	})
+	// A trade window opens on its offers alone: a capture of a real Bedrock
+	// server shows no ContainerOpen for one.
 	s.sendTrade(trader, id, nextID)
-}
-
-// RefreshTrade resends the offers of the trade window the Session has open, so
-// that the uses, the tier and the prices the client shows follow a trade that
-// was just made. It does nothing if no trade window is open.
-func (s *Session) RefreshTrade(tx *world.Tx) {
-	trader, ok := s.trader(tx)
-	if !ok {
-		return
-	}
-	s.sendTrade(trader, s.entityRuntimeID(trader), byte(s.openedWindowID.Load()))
 }
 
 // sendTrade writes the offers of a trader to the window ID passed, filling the
 // window announced for it.
 func (s *Session) sendTrade(trader entity.Trader, id uint64, windowID byte) {
 	offers, tier, name := trader.TradeOffers()
+	base := s.tradeNetID.Add(uint32(len(offers))+2) - (uint32(len(offers)) + 1)
+	s.tradeBaseID.Store(base)
 	data, err := nbt.MarshalEncoding(map[string]any{
-		"Recipes":             tradeRecipes(offers, tier),
+		"Recipes":             tradeRecipes(offers, tier, base),
 		"TierExpRequirements": tradeTiers(),
 	}, nbt.NetworkLittleEndian)
 	if err != nil {
@@ -1814,30 +1794,34 @@ func (s *Session) trader(tx *world.Tx) (entity.Trader, bool) {
 
 // tradeRecipes encodes the offers of a trader that has reached the tier passed
 // the way the client reads them from a trade window.
-func tradeRecipes(offers []entity.Offer, tier int) []map[string]any {
+// tradeRecipes encodes the offers of a trader that has reached the tier passed,
+// numbered from base. Every send gives its offers numbers of their own: a
+// client holds on to the offers it already has when they come back under the
+// numbers it knows, so offers a new tier unlocked would never appear.
+func tradeRecipes(offers []entity.Offer, tier int, base uint32) []map[string]any {
 	l := make([]map[string]any, 0, len(offers)+1)
 	for i, o := range offers {
-		l = append(l, tradeRecipe(i, o))
+		l = append(l, tradeRecipe(base+uint32(i), o))
 	}
 	if tier < len(tradeTierExperience)-1 {
 		// The client draws the experience bar of a trader that can still
 		// advance only if an offer of a tier past the last one exists. This
 		// offer has no items and no uses, so the window never shows it.
-		l = append(l, tradeRecipe(len(offers), entity.Offer{Tier: len(tradeTierExperience)}))
+		l = append(l, tradeRecipe(base+uint32(len(offers)), entity.Offer{Tier: len(tradeTierExperience)}))
 	}
 	return l
 }
 
 // tradeRecipe encodes a single offer shown at the index passed in the trade
 // window.
-func tradeRecipe(i int, o entity.Offer) map[string]any {
+func tradeRecipe(netID uint32, o entity.Offer) map[string]any {
 	uses, maxUses := max(o.Uses, 0), max(o.MaxUses, 0)
 	if uses >= maxUses {
 		// The client shows an offer that has no uses left as out of stock.
 		maxUses = 0
 	}
 	return map[string]any{
-		"netId":            int32(i + 1),
+		"netId":            int32(netID),
 		"uses":             int32(uses),
 		"maxUses":          int32(maxUses),
 		"traderExp":        int32(o.Experience),
@@ -1877,4 +1861,9 @@ func tradeTiers() []map[string]any {
 		l = append(l, map[string]any{strconv.Itoa(tier): exp})
 	}
 	return l
+}
+
+// tradeBase returns the number the offers of the open trade window start at.
+func (s *Session) tradeBase() uint32 {
+	return s.tradeBaseID.Load()
 }

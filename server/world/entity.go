@@ -432,9 +432,16 @@ type EntityData struct {
 	// DrivenRot are where that rider's client predicts it. The server still
 	// decides where the entity ends up: the prediction is where its rider
 	// wants it, not where it is.
-	Driven    bool
-	DrivenPos mgl64.Vec3
-	DrivenRot cube.Rotation
+	Driven     bool
+	DrivenPos  mgl64.Vec3
+	DrivenRot  cube.Rotation
+	DrivenTick uint64
+	// Refused holds where a driven entity really ended up after it turned down
+	// the request its rider's client made, waiting to be sent back to it.
+	Refused         bool
+	RefusedPos      mgl64.Vec3
+	RefusedRot      cube.Rotation
+	RefusedOnGround bool
 
 	Data any
 }

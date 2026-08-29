@@ -25,6 +25,16 @@ type Seater interface {
 	SeatPosition() mgl64.Vec3
 }
 
+// Dismounter is an Entity that answers the rider asking to get off it. An
+// Entity that does not implement it lets every rider off that asks.
+type Dismounter interface {
+	Entity
+	// AllowDismount reports whether rider may get off. A mount that answers
+	// false keeps its rider, which is how a mount that reads the request as
+	// something else keeps hold of it.
+	AllowDismount(rider Entity) bool
+}
+
 // RideInput is the movement a rider asks of its mount in one tick.
 type RideInput struct {
 	// Forward and Strafe are the movement axes, each in the range [-1, 1].
@@ -55,10 +65,31 @@ func (e *EntityHandle) Driven() (mgl64.Vec3, cube.Rotation, bool) {
 	return e.data.DrivenPos, e.data.DrivenRot, e.data.Driven
 }
 
-// Drive records where the rider steering e predicts it. Passing driven false
-// gives e back to its own movement.
-func (e *EntityHandle) Drive(driven bool, pos mgl64.Vec3, rot cube.Rotation) {
+// Drive records where the rider steering e predicts it, on the tick of its own
+// clock it predicted it for. Passing driven false gives e back to its own
+// movement.
+func (e *EntityHandle) Drive(driven bool, pos mgl64.Vec3, rot cube.Rotation, tick uint64) {
 	e.data.Driven, e.data.DrivenPos, e.data.DrivenRot = driven, pos, rot
+	e.data.DrivenTick = tick
+}
+
+// Refuse records that e turned down the request its rider's client made and
+// where it really ended up, so the rider can be told on its own tick. It is the
+// entity's own tick that decides: a request is a request, and only the entity
+// knows what it could do with it.
+func (e *EntityHandle) Refuse(pos mgl64.Vec3, rot cube.Rotation, onGround bool) {
+	e.data.Refused, e.data.RefusedPos = true, pos
+	e.data.RefusedRot, e.data.RefusedOnGround = rot, onGround
+}
+
+// Refusal returns the request e turned down and the tick it was made on, and
+// clears it. It reports false if e turned nothing down.
+func (e *EntityHandle) Refusal() (pos mgl64.Vec3, rot cube.Rotation, onGround bool, tick uint64, ok bool) {
+	if !e.data.Refused {
+		return mgl64.Vec3{}, cube.Rotation{}, false, 0, false
+	}
+	e.data.Refused = false
+	return e.data.RefusedPos, e.data.RefusedRot, e.data.RefusedOnGround, e.data.DrivenTick, true
 }
 
 // SeatPosition returns the offset from its mount's position at which e sits.
@@ -108,6 +139,7 @@ func (tx *Tx) Dismount(rider Entity) {
 	}
 	r.data.Mount, m.data.Rider, r.data.Seat = nil, nil, mgl64.Vec3{}
 	m.data.Driven, m.data.DrivenPos, m.data.DrivenRot = false, mgl64.Vec3{}, cube.Rotation{}
+	m.data.Refused = false
 	mount, ok := m.Entity(tx)
 	if !ok {
 		// The mount left the world before the rider got off it: there is no
