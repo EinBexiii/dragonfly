@@ -873,6 +873,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		// The entity currently isn't in this world.
 		return nil
 	}
+	tx.breakRideLinks(e)
 	w.Handler().HandleEntityDespawn(tx, e)
 
 	c := tx.chunk(pos)

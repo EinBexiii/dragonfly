@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"time"
 )
@@ -75,3 +76,12 @@ type LoveHeartsAction struct{ action }
 type action struct{}
 
 func (action) EntityAction() {}
+
+// FeedAction is a world.EntityAction that plays the animation an entity shows
+// when it is fed an item it accepts.
+type FeedAction struct {
+	// Item is the item the entity is fed, which decides the particles the
+	// client shows it eating.
+	Item item.Stack
+	action
+}

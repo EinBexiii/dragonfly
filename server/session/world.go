@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,6 +94,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		}
 
 		s.writePacket(&packet.AddPlayer{
+			EntityLinks:     s.entityLinks(e),
 			EntityMetadata:  metadata,
 			EntityRuntimeID: runtimeID,
 			GameType:        gameTypeFromMode(v.GameMode()),
@@ -150,6 +153,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 	}
 
 	s.writePacket(&packet.AddActor{
+		EntityLinks:     s.entityLinks(e),
 		EntityUniqueID:  int64(runtimeID),
 		EntityRuntimeID: runtimeID,
 		EntityType:      id,
@@ -342,13 +346,20 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 		return
 	}
 
-	// Show the entity's armour
+	// Show the entity's armour. Armour worn on the body, such as horse
+	// armour, renders from the Body field alone; the client ignores it as a
+	// chestplate.
+	var body item.Stack
+	if b, ok := e.(interface{ BodyArmour() item.Stack }); ok {
+		body = b.BodyArmour()
+	}
 	s.writePacket(&packet.MobArmourEquipment{
 		EntityRuntimeID: runtimeID,
 		Helmet:          instanceFromItem(s.br, inv.Helmet()),
 		Chestplate:      instanceFromItem(s.br, inv.Chestplate()),
 		Leggings:        instanceFromItem(s.br, inv.Leggings()),
 		Boots:           instanceFromItem(s.br, inv.Boots()),
+		Body:            instanceFromItem(s.br, body),
 	})
 }
 
@@ -407,6 +418,11 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	case particle.HugeExplosion:
 		s.writePacket(&packet.LevelEvent{
 			EventType: packet.LevelEventParticlesExplosion,
+			Position:  vec64To32(pos),
+		})
+	case particle.MobHappy:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeVillagerHappy,
 			Position:  vec64To32(pos),
 		})
 	case particle.BoneMeal:
@@ -1106,6 +1122,19 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventTamingSucceeded,
 		})
+	case entity.FeedAction:
+		// The event carries the eaten item as the client reads it: the item's
+		// network ID in the high bits, its metadata in the low ones.
+		var data int32
+		if !act.Item.Empty() {
+			it := instanceFromItem(s.br, act.Item)
+			data = it.Stack.ItemType.NetworkID<<16 | int32(it.Stack.MetadataValue)
+		}
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFeed,
+			EventData:       data,
+		})
 	case entity.LoveHeartsAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
@@ -1434,6 +1463,7 @@ func (s *Session) closeWindow(clientRequested bool) bool {
 
 	s.openedContainerID.Store(0)
 	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedEntity.Store(nil)
 	if !clientRequested {
 		s.writePacket(&packet.ContainerClose{
 			WindowID:      windowID,
@@ -1504,4 +1534,288 @@ func abs(a int) int {
 		return -a
 	}
 	return a
+}
+
+// ViewEntityMount views one entity riding another, or leaving its mount when
+// mounted is false. The client seats the rider on the mount from this link and
+// hands the session's own player the controls when it is the rider.
+func (s *Session) ViewEntityMount(rider, mount world.Entity, mounted bool) {
+	if s.entityHidden(rider) || s.entityHidden(mount) {
+		return
+	}
+	link, ok := s.entityLink(rider.H(), mount.H())
+	if !ok {
+		return
+	}
+	if !mounted {
+		link.Type = protocol.EntityLinkRemove
+	}
+	if link.RiderEntityUniqueID == selfEntityRuntimeID {
+		// Getting on or off drops whatever window the client had open without
+		// telling the server, so the inventory it may open is freed here. Left
+		// claimed, the player's own inventory would never open again.
+		s.invOpened.Store(false)
+	}
+	s.writePacket(&packet.SetActorLink{EntityLink: link})
+}
+
+// entityLinks returns the links seating e on the entity it rides and its own
+// rider on it, for the packet that spawns e. A link is only carried by the
+// spawn packet of the side that appears last: the client drops a link naming
+// an entity it does not know yet.
+func (s *Session) entityLinks(e world.Entity) []protocol.EntityLink {
+	var links []protocol.EntityLink
+	h := e.H()
+	if m := h.Mount(); m != nil {
+		if link, ok := s.entityLink(h, m); ok {
+			links = append(links, link)
+		}
+	}
+	if r := h.Rider(); r != nil {
+		if link, ok := s.entityLink(r, h); ok {
+			links = append(links, link)
+		}
+	}
+	return links
+}
+
+// entityLink builds the link seating rider on mount. It returns false if the
+// session does not have both entities in view, in which case the link has no
+// runtime ID to name them by.
+func (s *Session) entityLink(rider, mount *world.EntityHandle) (protocol.EntityLink, bool) {
+	s.entityMutex.RLock()
+	riderID, riderOK := s.entityRuntimeIDs[rider]
+	mountID, mountOK := s.entityRuntimeIDs[mount]
+	s.entityMutex.RUnlock()
+	if !riderOK || !mountOK {
+		return protocol.EntityLink{}, false
+	}
+	return protocol.EntityLink{
+		RiddenEntityUniqueID: int64(mountID),
+		RiderEntityUniqueID:  int64(riderID),
+		Type:                 protocol.EntityLinkRider,
+		RiderInitiated:       riderID == selfEntityRuntimeID,
+	}, true
+}
+
+// OpenEntityInventory opens the inventory that an entity carries, such as the
+// saddle and armour slots of a horse. Unlike a block container, the window is
+// bound to the entity: the client keeps it open while the entity is in view.
+// OpenEntityInventory reports whether it opened a window: an entity that
+// carries no inventory, or one the session cannot see, has none to open.
+func (s *Session) OpenEntityInventory(e world.Entity) bool {
+	carrier, ok := e.(entity.InventoryCarrier)
+	if !ok || s.entityHidden(e) {
+		return false
+	}
+	id := s.entityRuntimeID(e)
+	if id == 0 {
+		return false
+	}
+	inv, slots := carrier.CarriedInventory()
+	if inv == nil {
+		// The carrier refuses to be opened right now, the way an untamed horse
+		// has no window to show.
+		return false
+	}
+
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.openedWindow.Store(inv)
+	s.openedEntity.Store(e.H())
+	pos := cube.PosFromVec3(e.Position())
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(protocol.ContainerTypeHorse)
+
+	// The window opens on the UpdateEquip alone: an entity inventory has no
+	// ContainerOpen of its own, because it has no block position to name.
+	data, err := nbt.MarshalEncoding(map[string]any{"slots": equipSlots(slots)}, nbt.NetworkLittleEndian)
+	if err != nil {
+		s.conf.Log.Debug("open entity inventory: encode slots: " + err.Error())
+		return false
+	}
+	s.writePacket(&packet.UpdateEquip{
+		WindowID:                nextID,
+		WindowType:              protocol.ContainerTypeHorse,
+		Size:                    int32(inv.Size()),
+		EntityUniqueID:          int64(id),
+		SerialisedInventoryData: data,
+	})
+	s.sendInv(inv, uint32(nextID))
+	return true
+}
+
+// equipSlots describes the equipment slots of an entity window the way the
+// client expects them: an outline item and the list of items the slot takes.
+func equipSlots(slots []entity.InventorySlot) []map[string]any {
+	l := make([]map[string]any, 0, len(slots))
+	for _, slot := range slots {
+		accepted := make([]map[string]any, 0, len(slot.Accepts))
+		for _, it := range slot.Accepts {
+			accepted = append(accepted, map[string]any{"slotItem": slotItem(it)})
+		}
+		l = append(l, map[string]any{
+			"acceptedItems": accepted,
+			"item":          slotItem(slot.Icon),
+			"slotNumber":    int32(slot.Slot),
+		})
+	}
+	return l
+}
+
+// slotItem names an item in an entity window's slot description. The client
+// matches on the name alone, so the aux value is left wild.
+func slotItem(it world.Item) map[string]any {
+	var name string
+	if it != nil {
+		name, _ = it.EncodeItem()
+	}
+	return map[string]any{"Aux": int16(math.MaxInt16), "Name": name}
+}
+
+// OpenTrade opens the trade window of an entity that trades with players, such
+// as a villager. Like an entity inventory, the window is bound to the entity
+// rather than to a block position. OpenTrade does nothing for an entity that
+// does not trade or that the session cannot see.
+func (s *Session) OpenTrade(e world.Entity) {
+	trader, ok := e.(entity.Trader)
+	if !ok || s.entityHidden(e) {
+		return
+	}
+	id := s.entityRuntimeID(e)
+	if id == 0 {
+		return
+	}
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedEntity.Store(e.H())
+	pos := cube.PosFromVec3(e.Position())
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(protocol.ContainerTypeTrade)
+
+	s.sendTrade(trader, id, nextID)
+}
+
+// RefreshTrade resends the offers of the trade window the Session has open, so
+// that the uses, the tier and the prices the client shows follow a trade that
+// was just made. It does nothing if no trade window is open.
+func (s *Session) RefreshTrade(tx *world.Tx) {
+	trader, ok := s.trader(tx)
+	if !ok {
+		return
+	}
+	s.sendTrade(trader, s.entityRuntimeID(trader), byte(s.openedWindowID.Load()))
+}
+
+// sendTrade writes the offers of a trader to the window ID passed. The window
+// opens on this packet alone: a trade window has no ContainerOpen of its own,
+// because it holds no items server-side.
+func (s *Session) sendTrade(trader entity.Trader, id uint64, windowID byte) {
+	offers, tier, name := trader.TradeOffers()
+	data, err := nbt.MarshalEncoding(map[string]any{
+		"Recipes":             tradeRecipes(offers, tier),
+		"TierExpRequirements": tradeTiers(),
+	}, nbt.NetworkLittleEndian)
+	if err != nil {
+		s.conf.Log.Debug("send trade: encode offers: " + err.Error())
+		return
+	}
+	s.writePacket(&packet.UpdateTrade{
+		WindowID:          windowID,
+		WindowType:        protocol.ContainerTypeTrade,
+		TradeTier:         int32(max(tier, 0)),
+		VillagerUniqueID:  int64(id),
+		EntityUniqueID:    selfEntityRuntimeID,
+		DisplayName:       name,
+		NewTradeUI:        true,
+		DemandBasedPrices: true,
+		SerialisedOffers:  data,
+	})
+}
+
+// trader returns the entity.Trader whose trade window the Session has open. The
+// bool returned is false if no trade window is open or if the trader left the
+// world after it was opened.
+func (s *Session) trader(tx *world.Tx) (entity.Trader, bool) {
+	if !s.containerOpened.Load() || s.openedContainerID.Load() != protocol.ContainerTypeTrade {
+		return nil, false
+	}
+	handle := s.openedEntity.Load()
+	if handle == nil {
+		return nil, false
+	}
+	e, ok := handle.Entity(tx)
+	if !ok {
+		return nil, false
+	}
+	trader, ok := e.(entity.Trader)
+	return trader, ok
+}
+
+// tradeRecipes encodes the offers of a trader that has reached the tier passed
+// the way the client reads them from a trade window.
+func tradeRecipes(offers []entity.Offer, tier int) []map[string]any {
+	l := make([]map[string]any, 0, len(offers)+1)
+	for i, o := range offers {
+		l = append(l, tradeRecipe(i, o))
+	}
+	if tier < len(tradeTierExperience)-1 {
+		// The client draws the experience bar of a trader that can still
+		// advance only if an offer of a tier past the last one exists. This
+		// offer has no items and no uses, so the window never shows it.
+		l = append(l, tradeRecipe(len(offers), entity.Offer{Tier: len(tradeTierExperience)}))
+	}
+	return l
+}
+
+// tradeRecipe encodes a single offer shown at the index passed in the trade
+// window.
+func tradeRecipe(i int, o entity.Offer) map[string]any {
+	uses, maxUses := max(o.Uses, 0), max(o.MaxUses, 0)
+	if uses >= maxUses {
+		// The client shows an offer that has no uses left as out of stock.
+		maxUses = 0
+	}
+	return map[string]any{
+		"netId":            int32(i + 1),
+		"uses":             int32(uses),
+		"maxUses":          int32(maxUses),
+		"traderExp":        int32(o.Experience),
+		"rewardExp":        boolByte(o.RewardsExperience),
+		"tier":             int32(max(o.Tier, 0)),
+		"demand":           int32(o.Demand),
+		"priceMultiplierA": float32(o.PriceMultiplier),
+		"priceMultiplierB": float32(0),
+		"buyCountA":        int32(max(o.Wanted[0].Count(), 0)),
+		"buyCountB":        int32(max(o.Wanted[1].Count(), 0)),
+		"buyA":             item.WriteNBT(tradePrice(o), true),
+		"buyB":             item.WriteNBT(o.Wanted[1], true),
+		"sell":             item.WriteNBT(o.Given, true),
+	}
+}
+
+// tradePrice returns the first item an offer asks for, with the price rise that
+// the demand for the offer causes folded into its count.
+func tradePrice(o entity.Offer) item.Stack {
+	price := o.Wanted[0]
+	if price.Empty() {
+		return price
+	}
+	rise := max(int(float64(price.Count())*float64(o.Demand)*o.PriceMultiplier), 0)
+	return price.Grow(min(rise, price.MaxCount()-price.Count()))
+}
+
+// tradeTierExperience holds the experience a trader must have earned to reach
+// each of its trading tiers.
+var tradeTierExperience = [...]int32{0, 10, 70, 150, 250}
+
+// tradeTiers lists the experience the trading tiers require the way the client
+// reads them, every tier being a compound keyed by the tier itself.
+func tradeTiers() []map[string]any {
+	l := make([]map[string]any, 0, len(tradeTierExperience))
+	for tier, exp := range tradeTierExperience {
+		l = append(l, map[string]any{strconv.Itoa(tier): exp})
+	}
+	return l
 }

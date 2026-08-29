@@ -36,6 +36,19 @@ func (s *Session) parseEntityMetadata(e world.Entity) protocol.EntityMetadata {
 	if e.H().Type() == entity.LingeringPotionType {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagLingering)
 	}
+	if e.H().Mount() != nil {
+		// Without the seat offset the client puts the rider at its mount's
+		// feet, which reads as standing inside the floor.
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
+		m[protocol.EntityDataKeySeatOffset] = vec64To32(e.H().SeatPosition())
+		// The rotation a seat locks its rider to is written out even when it
+		// locks none: metadata is a delta, so a lock left out once stays on the
+		// client for as long as the rider lives.
+		m[protocol.EntityDataKeySeatLockPassengerRotation] = byte(0)
+		m[protocol.EntityDataKeySeatLockPassengerRotationDegrees] = float32(0)
+		m[protocol.EntityDataKeySeatRotationOffset] = float32(0)
+		m[protocol.EntityDataKeySeatRotationOffsetDegrees] = float32(0)
+	}
 	s.addSpecificMetadata(e, m)
 	if ent, ok := e.(interface{ Behaviour() entity.Behaviour }); ok {
 		if b := ent.Behaviour(); b != nil {

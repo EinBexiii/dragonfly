@@ -87,6 +87,12 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 		case *protocol.BeaconPaymentStackRequestAction:
 			err = h.handleBeaconPayment(a, s, tx)
 		case *protocol.CraftRecipeStackRequestAction:
+			if trader, ok := s.trader(tx); ok {
+				// A trade window has no recipes of its own: the recipe network
+				// ID points at one of the trader's offers instead.
+				err = h.handleTrade(trader, a.RecipeNetworkID, s, tx, c)
+				break
+			}
 			if s.containerOpened.Load() {
 				var special bool
 				switch tx.Block(*s.openedPos.Load()).(type) {
@@ -104,6 +110,10 @@ func (h *ItemStackRequestHandler) handleRequest(req protocol.ItemStackRequest, s
 			}
 			err = h.handleCraft(a, s, tx)
 		case *protocol.AutoCraftRecipeStackRequestAction:
+			if trader, ok := s.trader(tx); ok {
+				err = h.handleTrade(trader, a.RecipeNetworkID, s, tx, c)
+				break
+			}
 			err = h.handleAutoCraft(a, s, tx)
 		case *protocol.CraftRecipeOptionalStackRequestAction:
 			err = h.handleCraftRecipeOptional(a, s, req.FilterStrings, c, tx)
@@ -253,6 +263,26 @@ func (h *ItemStackRequestHandler) handleDrop(a *protocol.DropStackRequestAction,
 
 	n := c.Drop(i.Grow(int(a.Count) - i.Count()))
 	h.setItemInSlot(a.Source, i.Grow(-n), s, tx)
+	return nil
+}
+
+// handleTrade handles the CraftRecipe request action of a trade window, in which the recipe network ID is the
+// index of the offer the player picked, raised by one.
+func (h *ItemStackRequestHandler) handleTrade(t entity.Trader, recipeNetworkID uint32, s *Session, tx *world.Tx, c Controllable) error {
+	offers, _, _ := t.TradeOffers()
+	i := int(recipeNetworkID) - 1
+	if i < 0 || i >= len(offers) {
+		return fmt.Errorf("offer with network id %v does not exist", recipeNetworkID)
+	}
+	if !t.Trade(i, c) {
+		return fmt.Errorf("offer %v could not be made", i)
+	}
+	if err := h.createResults(s, tx, offers[i].Given); err != nil {
+		return err
+	}
+	// The offer the client shows is now one use further along and may have
+	// locked or raised the tier, so the window is sent again.
+	s.RefreshTrade(tx)
 	return nil
 }
 

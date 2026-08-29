@@ -15,13 +15,58 @@ import (
 // PlayerAuthInputHandler handles the PlayerAuthInput packet.
 type PlayerAuthInputHandler struct{}
 
+// maxMountDrift is how far a rider's prediction of its mount may run from where
+// the server has it before the server sends its own answer. A ride is never
+// exact, so a small gap is left alone; anything past it is the prediction
+// coming loose.
+const maxMountDrift = 1.0
+
 // Handle ...
 func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAuthInput)
-	if err := h.handleMovement(pk, s, c); err != nil {
-		return err
+	if !h.handleRiding(pk, s, tx, c) {
+		if err := h.handleMovement(pk, s, c); err != nil {
+			return err
+		}
 	}
 	return h.handleActions(pk, s, tx, c)
+}
+
+// handleRiding moves a riding player with its mount and passes on the movement
+// it asks of that mount, reporting whether the player rides at all. The mount
+// is walked by the server, so the rider goes wherever the mount is rather than
+// where it reports itself: while riding, a client reports the mount's position,
+// not its own. A client that predicts its mount anyway is told the server's
+// answer once the two have drifted apart, which is what ends the drift; a mount
+// standing its ground broadcasts nothing on its own, so without that the
+// client would never hear from it again.
+func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) bool {
+	m := c.H().Mount()
+	if m == nil {
+		return false
+	}
+	mount, ok := m.Entity(tx)
+	if !ok {
+		return false
+	}
+	actual := mount.Position()
+	if id, ok := pk.ClientPredictedVehicle.Value(); ok && id != 0 && uint64(id) == s.entityRuntimeID(mount) {
+		if pos := vec32To64(pk.Position); !math.IsNaN(pos[1]) && actual.Sub(pos).Len() > maxMountDrift {
+			s.ViewEntityDisplacement(mount, actual, mount.Rotation(), true)
+		}
+	}
+	s.moving = true
+	yaw, pitch := c.Rotation().Elem()
+	c.Move(actual.Sub(c.Position()), float64(pk.Yaw)-yaw, float64(pk.Pitch)-pitch)
+
+	if r, ok := mount.(world.Rideable); ok {
+		r.Steer(c, world.RideInput{
+			Forward: float64(pk.MoveVector[1]),
+			Strafe:  float64(pk.MoveVector[0]),
+			Jump:    pk.InputData.Load(packet.InputFlagJumping) || pk.InputData.Load(packet.InputFlagStartJumping),
+		})
+	}
+	return true
 }
 
 // handleMovement handles the movement part of the packet.PlayerAuthInput.

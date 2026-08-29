@@ -2424,6 +2424,25 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	}
 }
 
+// OpenEntityInventory opens the inventory that an entity carries, such as the
+// saddle and armour slots of a horse. It reports whether a window opened: an
+// entity that carries no inventory, or a player without a session, has none.
+func (p *Player) OpenEntityInventory(e world.Entity) bool {
+	if p.session() == session.Nop {
+		return false
+	}
+	return p.session().OpenEntityInventory(e)
+}
+
+// OpenTrade opens the trade window of an entity that trades with players, such
+// as a villager. It does nothing for an entity that does not trade, or if the
+// player has no session connected to it.
+func (p *Player) OpenTrade(e world.Entity) {
+	if p.session() != session.Nop {
+		p.session().OpenTrade(e)
+	}
+}
+
 // Latency returns a rolling average of latency between the sending and the receiving end of the connection of
 // the player.
 // The latency returned is updated continuously and is half the round trip time (RTT).

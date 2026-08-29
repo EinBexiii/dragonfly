@@ -52,6 +52,9 @@ type Viewer interface {
 	// ViewEntityAction views an action performed by an Entity. Available actions may be found in the `action`
 	// package, and include things such as swinging an arm.
 	ViewEntityAction(e Entity, a EntityAction)
+	// ViewEntityMount views one Entity riding another. Passing mounted false
+	// views the rider leaving its mount.
+	ViewEntityMount(rider, mount Entity, mounted bool)
 	// ViewEntityState views the current state of an Entity. It is called whenever an Entity changes its
 	// physical appearance, for example when sprinting.
 	ViewEntityState(e Entity)
@@ -97,6 +100,7 @@ func (NopViewer) ViewEntityTeleport(Entity, mgl64.Vec3)                         
 func (NopViewer) ViewChunk(ChunkPos, Dimension, map[cube.Pos]Block, *chunk.Chunk)            {}
 func (NopViewer) ViewTime(int)                                                               {}
 func (NopViewer) ViewTimeCycle(bool)                                                         {}
+func (NopViewer) ViewEntityMount(Entity, Entity, bool)                                       {}
 func (NopViewer) ViewEntityItems(Entity)                                                     {}
 func (NopViewer) ViewEntityArmour(Entity)                                                    {}
 func (NopViewer) ViewEntityAction(Entity, EntityAction)                                      {}

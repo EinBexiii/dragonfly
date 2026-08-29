@@ -11,20 +11,32 @@ import (
 type InteractHandler struct{}
 
 // Handle ...
-func (h *InteractHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Controllable) error {
+func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.Interact)
 	pos := c.Position()
 
 	switch pk.ActionType {
 	case packet.InteractActionMouseOverEntity:
 		// We don't need this action.
+	case packet.InteractActionLeaveVehicle:
+		// The player sneaked while riding an entity to get off it.
+		tx.Dismount(c)
 	case packet.InteractActionOpenInventory:
-		if s.invOpened {
+		if m := c.H().Mount(); m != nil {
+			// A player riding a mount opens the mount's own inventory rather
+			// than its own, the way a saddled horse opens its tack window.
+			// Claiming the inventory latch here would strand it: the client
+			// closes a window it opened while riding without saying so.
+			if mount, ok := m.Entity(tx); ok && s.OpenEntityInventory(mount) {
+				return nil
+			}
+		}
+		if s.invOpened.Load() {
 			// When there is latency, this might end up being sent multiple times. If we send a ContainerOpen
 			// multiple times, the client crashes.
 			return nil
 		}
-		s.invOpened = true
+		s.invOpened.Store(true)
 		s.writePacket(&packet.ContainerOpen{
 			WindowID:                0,
 			ContainerType:           0xff,

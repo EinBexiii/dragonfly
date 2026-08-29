@@ -423,6 +423,17 @@ type EntityData struct {
 	AlwaysShowNameTag bool
 	FireDuration      time.Duration
 	Age               time.Duration
+	// Rider is the entity seated on this one and Mount the entity this one is
+	// seated on. Both are nil for an entity that is not part of a ride.
+	Rider, Mount *EntityHandle
+	// Seat is the offset from its mount's position at which the entity sits.
+	Seat mgl64.Vec3
+	// Driven reports that a rider is steering this entity, and DrivenPos is
+	// where that rider's client predicts it. The server still decides where
+	// the entity ends up: the prediction is where its rider wants it, not
+	// where it is.
+	Driven    bool
+	DrivenPos mgl64.Vec3
 
 	Data any
 }

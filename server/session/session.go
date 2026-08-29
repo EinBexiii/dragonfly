@@ -77,6 +77,7 @@ type Session struct {
 	openedContainerID              atomic.Uint32
 	openedWindow                   atomic.Pointer[inventory.Inventory]
 	openedPos                      atomic.Pointer[cube.Pos]
+	openedEntity                   atomic.Pointer[world.EntityHandle]
 	swingingArm                    atomic.Bool
 	changingSlot                   atomic.Bool
 	changingDimension              atomic.Bool
@@ -89,7 +90,7 @@ type Session struct {
 	blobMu                sync.Mutex
 	blobs                 map[uint64][]byte
 	openChunkTransactions []map[uint64]struct{}
-	invOpened             bool
+	invOpened             atomic.Bool
 
 	hudMu      sync.RWMutex
 	hudUpdates map[hud.Element]bool
