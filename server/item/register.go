@@ -101,6 +101,10 @@ func init() {
 	world.RegisterItem(Pufferfish{})
 	world.RegisterItem(PumpkinPie{})
 	world.RegisterItem(RabbitFoot{})
+	world.RegisterItem(Saddle{})
+	for _, t := range HorseArmourTiers() {
+		world.RegisterItem(HorseArmour{Tier: t})
+	}
 	world.RegisterItem(RabbitHide{})
 	world.RegisterItem(RabbitStew{})
 	world.RegisterItem(Rabbit{Cooked: true})
