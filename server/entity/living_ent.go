@@ -191,6 +191,7 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 
 	s.Health.AddHealth(-damageLeft)
 	e.PlayAction(HurtAction{})
+	e.tx.PlaySound(e.data.Pos, sound.MobHurt{Entity: e.H().Type().EncodeEntity()})
 
 	if src.ReducedByArmour() {
 		s.Armour.Damage(damage, e.damageItem)
@@ -433,6 +434,7 @@ func (e *LivingEnt) Tick(tx *world.Tx, current int64) {
 		// The death animation and removal go out in the same tick: clients play the animation on the
 		// removed entity themselves.
 		e.PlayAction(DeathAction{})
+		tx.PlaySound(e.data.Pos, sound.MobDeath{Entity: e.H().Type().EncodeEntity()})
 		if h, ok := e.Behaviour().(LivingDeathHandler); ok {
 			h.HandleDeath(e, tx, s.deathSrc)
 		}

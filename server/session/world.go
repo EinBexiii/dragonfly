@@ -546,6 +546,16 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
+	case sound.MobHurt:
+		pk.SoundType, pk.EntityType = packet.SoundEventHurt, so.Entity
+	case sound.MobDeath:
+		pk.SoundType, pk.EntityType = packet.SoundEventDeath, so.Entity
+	case sound.MobAmbient:
+		pk.SoundType, pk.EntityType = packet.SoundEventAmbient, so.Entity
+	case sound.MobEat:
+		pk.SoundType, pk.EntityType = packet.SoundEventEat, so.Entity
+	case sound.MobPlop:
+		pk.SoundType, pk.EntityType = packet.SoundEventPlop, so.Entity
 	case sound.EquipItem:
 		switch i := so.Item.(type) {
 		case item.Helmet:
@@ -1085,6 +1095,21 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFireworksExplode,
+		})
+	case entity.TamingFailedAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingFailed,
+		})
+	case entity.TamingSucceededAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingSucceeded,
+		})
+	case entity.LoveHeartsAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventLoveHearts,
 		})
 	case entity.EatAction:
 		if user, ok := e.(item.User); ok {

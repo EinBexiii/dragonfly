@@ -59,6 +59,17 @@ type FireworkExplosionAction struct{ action }
 // TotemUseAction is a world.EntityAction that displays the totem use particles and animation.
 type TotemUseAction struct{ action }
 
+// TamingFailedAction is a world.EntityAction that makes an entity display the smoke particles of a failed
+// taming attempt.
+type TamingFailedAction struct{ action }
+
+// TamingSucceededAction is a world.EntityAction that makes an entity display the heart particles of a
+// successful taming attempt.
+type TamingSucceededAction struct{ action }
+
+// LoveHeartsAction is a world.EntityAction that makes an entity display breeding heart particles.
+type LoveHeartsAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}
