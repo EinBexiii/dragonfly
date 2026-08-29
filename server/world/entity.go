@@ -428,12 +428,13 @@ type EntityData struct {
 	Rider, Mount *EntityHandle
 	// Seat is the offset from its mount's position at which the entity sits.
 	Seat mgl64.Vec3
-	// Driven reports that a rider is steering this entity, and DrivenPos is
-	// where that rider's client predicts it. The server still decides where
-	// the entity ends up: the prediction is where its rider wants it, not
-	// where it is.
+	// Driven reports that a rider is steering this entity, and DrivenPos and
+	// DrivenRot are where that rider's client predicts it. The server still
+	// decides where the entity ends up: the prediction is where its rider
+	// wants it, not where it is.
 	Driven    bool
 	DrivenPos mgl64.Vec3
+	DrivenRot cube.Rotation
 
 	Data any
 }

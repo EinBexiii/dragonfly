@@ -67,8 +67,21 @@ func (s *Session) StartShowingEntity(e world.Entity) {
 
 // closeCurrentContainer closes the container the player might currently have open.
 func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
+	// The entity whose window this was is read before the window is dropped,
+	// so that a trader is let go of its customer.
+	var traded *world.EntityHandle
+	if h := s.openedEntity.Load(); h != nil {
+		traded = h
+	}
 	if !s.closeWindow(clientRequested) {
 		return
+	}
+	if traded != nil {
+		if e, ok := traded.Entity(tx); ok {
+			if w, ok := e.(entity.TradeWatcher); ok {
+				w.TradeClosed()
+			}
+		}
 	}
 
 	pos := *s.openedPos.Load()

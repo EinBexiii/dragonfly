@@ -33,13 +33,17 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 }
 
 // handleRiding moves a riding player with its mount and passes on the movement
-// it asks of that mount, reporting whether the player rides at all. The mount
-// is walked by the server, so the rider goes wherever the mount is rather than
-// where it reports itself: while riding, a client reports the mount's position,
-// not its own. A client that predicts its mount anyway is told the server's
-// answer once the two have drifted apart, which is what ends the drift; a mount
-// standing its ground broadcasts nothing on its own, so without that the
-// client would never hear from it again.
+// it asks of that mount, reporting whether the player rides at all. The rider
+// goes wherever the mount is rather than where it reports itself: the two are
+// one body while it rides.
+//
+// A mount the client drives itself reports its position here rather than the
+// rider's, in the space the mount is sent in, along with the rotation it turned
+// it to. Both are recorded as a request: a client simulates its mount without
+// the ground under it, so where the mount really ends up stays the mount's own
+// tick to decide. Once the two have drifted apart the server's answer is sent
+// on its own, which is what ends the drift; a mount standing its ground
+// broadcasts nothing, so without that the client would never hear from it.
 func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Session, tx *world.Tx, c Controllable) bool {
 	m := c.H().Mount()
 	if m == nil {
@@ -50,10 +54,13 @@ func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Sess
 		return false
 	}
 	actual := mount.Position()
-	if id, ok := pk.ClientPredictedVehicle.Value(); ok && id != 0 && uint64(id) == s.entityRuntimeID(mount) {
-		if pos := vec32To64(pk.Position); !math.IsNaN(pos[1]) && actual.Sub(pos).Len() > maxMountDrift {
+	if pos, rot, ok := h.predictedMount(pk, s, mount); ok {
+		m.Drive(true, pos, rot)
+		if actual.Sub(pos).Len() > maxMountDrift {
 			s.ViewEntityDisplacement(mount, actual, mount.Rotation(), true)
 		}
+	} else {
+		m.Drive(false, mgl64.Vec3{}, cube.Rotation{})
 	}
 	s.moving = true
 	yaw, pitch := c.Rotation().Elem()
@@ -67,6 +74,26 @@ func (h PlayerAuthInputHandler) handleRiding(pk *packet.PlayerAuthInput, s *Sess
 		})
 	}
 	return true
+}
+
+// predictedMount returns where the rider's client predicts the mount it drives,
+// and reports whether it drives it at all. The position is the one the mount is
+// sent at rather than the rider's, so the mount's own offset comes back off it.
+func (h PlayerAuthInputHandler) predictedMount(pk *packet.PlayerAuthInput, s *Session, mount world.Entity) (mgl64.Vec3, cube.Rotation, bool) {
+	id, ok := pk.ClientPredictedVehicle.Value()
+	if !ok || id == 0 || uint64(id) != s.entityRuntimeID(mount) {
+		return mgl64.Vec3{}, cube.Rotation{}, false
+	}
+	rot, ok := pk.VehicleRotation.Value()
+	if !ok {
+		// The client has just got on or off and has no rotation to give yet.
+		return mgl64.Vec3{}, cube.Rotation{}, false
+	}
+	pos := vec32To64(pk.Position).Sub(entityOffset(mount))
+	if math.IsNaN(pos[0]) || math.IsNaN(pos[1]) || math.IsNaN(pos[2]) {
+		return mgl64.Vec3{}, cube.Rotation{}, false
+	}
+	return pos, cube.Rotation{float64(rot[1]), float64(rot[0])}, true
 }
 
 // handleMovement handles the movement part of the packet.PlayerAuthInput.

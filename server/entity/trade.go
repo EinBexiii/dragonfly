@@ -50,3 +50,13 @@ type Offer struct {
 	// point of demand.
 	Demand int
 }
+
+// TradeWatcher is a Trader that is told while a customer stands at its window,
+// so that it can attend to that customer instead of wandering off.
+type TradeWatcher interface {
+	Trader
+	// TradeOpened is called when a customer opens the window, and TradeClosed
+	// once that window is closed again.
+	TradeOpened(customer world.Entity)
+	TradeClosed()
+}

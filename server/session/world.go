@@ -158,6 +158,7 @@ func (s *Session) ViewEntity(e world.Entity) {
 		EntityRuntimeID: runtimeID,
 		EntityType:      id,
 		EntityMetadata:  metadata,
+		Attributes:      entityAttributes(e),
 		Position:        vec64To32(e.Position()),
 		Velocity:        vec64To32(vel),
 		Pitch:           float32(pitch),
@@ -208,6 +209,14 @@ func (s *Session) ViewEntityMovement(e world.Entity, pos mgl64.Vec3, rot cube.Ro
 	if (id == selfEntityRuntimeID && s.moving) || s.entityHidden(e) {
 		return
 	}
+	if _, _, driven := e.H().Driven(); driven && e.H().Rider() == s.ent {
+		// The rider driving a mount is the one that reported where it went.
+		// Echoing that back on every tick is what its own prediction fights,
+		// and the fight is what a rider feels as a mount shaking under it. It
+		// is answered only once the two have drifted apart, through the
+		// displacement the drift sends.
+		return
+	}
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, false)
 }
 
@@ -248,6 +257,23 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 }
 
 // entityOffset returns the offset that entities have client-side.
+// entityAttributes returns the attributes an entity's behaviour carries, which
+// are the ones a client reads a mount it drives from. A behaviour that carries
+// none leaves the entity on the values its type defines client-side.
+func entityAttributes(e world.Entity) []protocol.AttributeValue {
+	ent, ok := e.(interface{ Behaviour() entity.Behaviour })
+	if !ok {
+		return nil
+	}
+	a, ok := ent.Behaviour().(interface {
+		EncodeEntityAttributes() []protocol.AttributeValue
+	})
+	if !ok {
+		return nil
+	}
+	return a.EncodeEntityAttributes()
+}
+
 func entityOffset(e world.Entity) mgl64.Vec3 {
 	if offset, ok := e.H().Type().(OffsetEntity); ok {
 		return mgl64.Vec3{0, offset.NetworkOffset()}
@@ -1603,7 +1629,7 @@ func (s *Session) entityLink(rider, mount *world.EntityHandle) (protocol.EntityL
 // bound to the entity: the client keeps it open while the entity is in view.
 // OpenEntityInventory reports whether it opened a window: an entity that
 // carries no inventory, or one the session cannot see, has none to open.
-func (s *Session) OpenEntityInventory(e world.Entity) bool {
+func (s *Session) OpenEntityInventory(e world.Entity, tx *world.Tx) bool {
 	carrier, ok := e.(entity.InventoryCarrier)
 	if !ok || s.entityHidden(e) {
 		return false
@@ -1619,16 +1645,27 @@ func (s *Session) OpenEntityInventory(e world.Entity) bool {
 		return false
 	}
 
+	if s.containerOpened.Load() {
+		if s.openedEntity.Load() == e.H() {
+			// Already open on this entity; see OpenTrade.
+			return true
+		}
+		s.closeCurrentContainer(tx, false)
+	}
 	nextID := s.nextWindowID()
 	s.containerOpened.Store(true)
+	s.invOpened.Store(false)
 	s.openedWindow.Store(inv)
 	s.openedEntity.Store(e.H())
 	pos := cube.PosFromVec3(e.Position())
 	s.openedPos.Store(&pos)
 	s.openedContainerID.Store(protocol.ContainerTypeHorse)
 
-	// The window opens on the UpdateEquip alone: an entity inventory has no
-	// ContainerOpen of its own, because it has no block position to name.
+	s.writePacket(&packet.ContainerOpen{
+		WindowID:                nextID,
+		ContainerType:           protocol.ContainerTypeHorse,
+		ContainerEntityUniqueID: int64(id),
+	})
 	data, err := nbt.MarshalEncoding(map[string]any{"slots": equipSlots(slots)}, nbt.NetworkLittleEndian)
 	if err != nil {
 		s.conf.Log.Debug("open entity inventory: encode slots: " + err.Error())
@@ -1677,7 +1714,7 @@ func slotItem(it world.Item) map[string]any {
 // as a villager. Like an entity inventory, the window is bound to the entity
 // rather than to a block position. OpenTrade does nothing for an entity that
 // does not trade or that the session cannot see.
-func (s *Session) OpenTrade(e world.Entity) {
+func (s *Session) OpenTrade(e world.Entity, customer world.Entity, tx *world.Tx) {
 	trader, ok := e.(entity.Trader)
 	if !ok || s.entityHidden(e) {
 		return
@@ -1686,14 +1723,37 @@ func (s *Session) OpenTrade(e world.Entity) {
 	if id == 0 {
 		return
 	}
+	if s.containerOpened.Load() {
+		if s.openedEntity.Load() == e.H() {
+			// The window is already open on this trader. Opening it again
+			// would close and reopen it under the client every time the
+			// player clicks, which leaves it flickering and out of step.
+			return
+		}
+		// A window opened over another leaves the first one hanging on the
+		// server, because the client only ever closes the one it shows.
+		s.closeCurrentContainer(tx, false)
+	}
 	nextID := s.nextWindowID()
 	s.containerOpened.Store(true)
+	s.invOpened.Store(false)
 	s.openedWindow.Store(inventory.New(1, nil))
 	s.openedEntity.Store(e.H())
 	pos := cube.PosFromVec3(e.Position())
 	s.openedPos.Store(&pos)
 	s.openedContainerID.Store(protocol.ContainerTypeTrade)
+	if w, ok := trader.(entity.TradeWatcher); ok {
+		w.TradeOpened(customer)
+	}
 
+	// The window is announced like any other container before its contents
+	// follow. Without it the client never books the window, and the one it
+	// cannot account for locks every window that comes after.
+	s.writePacket(&packet.ContainerOpen{
+		WindowID:                nextID,
+		ContainerType:           protocol.ContainerTypeTrade,
+		ContainerEntityUniqueID: int64(id),
+	})
 	s.sendTrade(trader, id, nextID)
 }
 
@@ -1708,9 +1768,8 @@ func (s *Session) RefreshTrade(tx *world.Tx) {
 	s.sendTrade(trader, s.entityRuntimeID(trader), byte(s.openedWindowID.Load()))
 }
 
-// sendTrade writes the offers of a trader to the window ID passed. The window
-// opens on this packet alone: a trade window has no ContainerOpen of its own,
-// because it holds no items server-side.
+// sendTrade writes the offers of a trader to the window ID passed, filling the
+// window announced for it.
 func (s *Session) sendTrade(trader entity.Trader, id uint64, windowID byte) {
 	offers, tier, name := trader.TradeOffers()
 	data, err := nbt.MarshalEncoding(map[string]any{

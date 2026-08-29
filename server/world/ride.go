@@ -1,6 +1,9 @@
 package world
 
-import "github.com/go-gl/mathgl/mgl64"
+import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/go-gl/mathgl/mgl64"
+)
 
 // Rideable is an Entity that is steered by the Entity riding it, such as a
 // saddled horse. An Entity that does not implement Rideable can still be
@@ -48,14 +51,14 @@ func (e *EntityHandle) Rider() *EntityHandle {
 // predicts it. The position is where the rider wants e to be: the server still
 // resolves it against the blocks around it, and a server that took it as given
 // would follow a client straight through the floor.
-func (e *EntityHandle) Driven() (mgl64.Vec3, bool) {
-	return e.data.DrivenPos, e.data.Driven
+func (e *EntityHandle) Driven() (mgl64.Vec3, cube.Rotation, bool) {
+	return e.data.DrivenPos, e.data.DrivenRot, e.data.Driven
 }
 
 // Drive records where the rider steering e predicts it. Passing driven false
 // gives e back to its own movement.
-func (e *EntityHandle) Drive(driven bool, pos mgl64.Vec3) {
-	e.data.Driven, e.data.DrivenPos = driven, pos
+func (e *EntityHandle) Drive(driven bool, pos mgl64.Vec3, rot cube.Rotation) {
+	e.data.Driven, e.data.DrivenPos, e.data.DrivenRot = driven, pos, rot
 }
 
 // SeatPosition returns the offset from its mount's position at which e sits.
@@ -104,7 +107,7 @@ func (tx *Tx) Dismount(rider Entity) {
 		return
 	}
 	r.data.Mount, m.data.Rider, r.data.Seat = nil, nil, mgl64.Vec3{}
-	m.data.Driven, m.data.DrivenPos = false, mgl64.Vec3{}
+	m.data.Driven, m.data.DrivenPos, m.data.DrivenRot = false, mgl64.Vec3{}, cube.Rotation{}
 	mount, ok := m.Entity(tx)
 	if !ok {
 		// The mount left the world before the rider got off it: there is no
@@ -131,19 +134,25 @@ func (tx *Tx) breakRideLinks(e Entity) {
 	}
 }
 
-// seatedFactor is the share of its standing eye height a seated rider sits at.
-// A rider that does not sit upright drops by the remainder of it instead.
-const seatedFactor = 0.75308642
+// playerRidingOffset is how far a seated player sits below the seat its mount
+// names, the vanilla riding offset of a player.
+const playerRidingOffset = -0.35
 
 // riderSeatOffset returns what a rider adds to the seat its mount names. A
-// mount names only where its saddle sits; how high the rider itself rides on it
-// follows from the rider's own size, so the two are added.
+// mount names only where its saddle sits; where the rider itself ends up on it
+// follows from the rider alone, so the two are added.
+//
+// A seat is read by the client against the position the rider is sent at, so it
+// carries the rider's network offset: leaving it out drops a player a whole
+// 1.62 blocks, which puts it inside the floor its mount stands on. On top of
+// that a player sits a little lower than the saddle it sits on.
 func riderSeatOffset(rider Entity) mgl64.Vec3 {
-	h := rider.H().Type().BBox(rider).Height()
-	if rider.H().Type().EncodeEntity() == "minecraft:player" {
-		// A player sits at a share of its standing eye height, which is nine
-		// tenths of its own height.
-		return mgl64.Vec3{0, h * 0.9 * seatedFactor}
+	off := mgl64.Vec3{}
+	if o, ok := rider.H().Type().(interface{ NetworkOffset() float64 }); ok {
+		off[1] += o.NetworkOffset()
 	}
-	return mgl64.Vec3{0, -h * (1 - seatedFactor)}
+	if rider.H().Type().EncodeEntity() == "minecraft:player" {
+		off[1] += playerRidingOffset
+	}
+	return off
 }

@@ -27,7 +27,7 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Co
 			// than its own, the way a saddled horse opens its tack window.
 			// Claiming the inventory latch here would strand it: the client
 			// closes a window it opened while riding without saying so.
-			if mount, ok := m.Entity(tx); ok && s.OpenEntityInventory(mount) {
+			if mount, ok := m.Entity(tx); ok && s.OpenEntityInventory(mount, tx) {
 				return nil
 			}
 		}

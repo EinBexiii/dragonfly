@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -15,11 +15,7 @@ import (
 func TestRidingMetadataWritable(t *testing.T) {
 	m := protocol.NewEntityMetadata()
 	m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagRiding)
-	m[protocol.EntityDataKeySeatOffset] = mgl32.Vec3{0, 2.471, 0}
-	m[protocol.EntityDataKeySeatLockPassengerRotation] = byte(0)
-	m[protocol.EntityDataKeySeatLockPassengerRotationDegrees] = float32(0)
-	m[protocol.EntityDataKeySeatRotationOffset] = float32(0)
-	m[protocol.EntityDataKeySeatRotationOffsetDegrees] = float32(0)
+	writeSeat(m, mgl64.Vec3{0, 2.371, -0.2})
 
 	defer func() {
 		if r := recover(); r != nil {

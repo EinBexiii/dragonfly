@@ -2431,7 +2431,7 @@ func (p *Player) OpenEntityInventory(e world.Entity) bool {
 	if p.session() == session.Nop {
 		return false
 	}
-	return p.session().OpenEntityInventory(e)
+	return p.session().OpenEntityInventory(e, p.Tx())
 }
 
 // OpenTrade opens the trade window of an entity that trades with players, such
@@ -2439,7 +2439,7 @@ func (p *Player) OpenEntityInventory(e world.Entity) bool {
 // player has no session connected to it.
 func (p *Player) OpenTrade(e world.Entity) {
 	if p.session() != session.Nop {
-		p.session().OpenTrade(e)
+		p.session().OpenTrade(e, p, p.Tx())
 	}
 }
 
