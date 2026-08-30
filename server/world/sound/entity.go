@@ -23,6 +23,46 @@ type Fall struct {
 	sound
 }
 
+// MobHurt is a sound played when a mob is hurt. The client picks the sound
+// matching the entity type given.
+type MobHurt struct {
+	// Entity is the identifier of the hurt entity's type.
+	Entity string
+	sound
+}
+
+// MobDeath is a sound played when a mob dies. The client picks the sound
+// matching the entity type given.
+type MobDeath struct {
+	// Entity is the identifier of the dying entity's type.
+	Entity string
+	sound
+}
+
+// MobAmbient is the idle voice a mob plays every so often. The client picks
+// the sound matching the entity type given.
+type MobAmbient struct {
+	// Entity is the identifier of the entity's type.
+	Entity string
+	sound
+}
+
+// MobEat is a sound played when a mob eats an item offered to it. The client
+// picks the sound matching the entity type given.
+type MobEat struct {
+	// Entity is the identifier of the eating entity's type.
+	Entity string
+	sound
+}
+
+// MobPlop is a sound played when a mob lays an item. The client picks the
+// sound matching the entity type given.
+type MobPlop struct {
+	// Entity is the identifier of the laying entity's type.
+	Entity string
+	sound
+}
+
 // Burp is a sound played when a player finishes eating an item.
 type Burp struct{ sound }
 
