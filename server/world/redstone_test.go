@@ -20,6 +20,8 @@ func runWorld(w *World, f func(*Tx)) {
 }
 
 func (minimalRedstoneTestHandler) HandleRedstoneUpdate(*Context, RedstoneUpdate)                {}
+func (minimalRedstoneTestHandler) HandleEntityMount(*Context, Entity, Entity, *int)             {}
+func (minimalRedstoneTestHandler) HandleEntityDismount(*Context, Entity, Entity)                {}
 func (minimalRedstoneTestHandler) HandleLiquidFlow(*Context, cube.Pos, cube.Pos, Liquid, Block) {}
 func (minimalRedstoneTestHandler) HandleLiquidDecay(*Context, cube.Pos, Liquid, Liquid)         {}
 func (minimalRedstoneTestHandler) HandleLiquidHarden(*Context, cube.Pos, Block, Block, Block)   {}

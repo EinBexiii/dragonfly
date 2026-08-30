@@ -272,6 +272,7 @@ func (tx *Tx) AddEntityAt(e *EntityHandle, pos mgl64.Vec3) Entity {
 // RemoveEntity returns the EntityHandle of the Entity. After removing an Entity
 // from the World, the Entity is no longer usable.
 func (tx *Tx) RemoveEntity(e Entity) *EntityHandle {
+	tx.breakRideLinks(e)
 	return tx.World().removeEntity(e, tx)
 }
 
