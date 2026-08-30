@@ -47,15 +47,31 @@ func (m *Movement) Send() {
 	rotChanged := math.Abs(m.drot[0]) > epsilon || math.Abs(m.drot[1]) > epsilon
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
+	// An Entity a client drives is told where it is on every tick and its speed
+	// on none: a position it is not sent is a guess nothing answers, and a
+	// velocity it is sent is a push added to what it is already doing.
+	_, _, driven := m.e.H().Predicted()
+
+	// An Entity resting on a block carries the one tick of gravity holding it
+	// there. That is the server's own bookkeeping, not motion a viewer sees.
+	vel := m.vel
+	if m.onGround && math.Abs(vel[1]) <= restingFall {
+		vel[1] = 0
+	}
+
 	for _, v := range m.v {
-		if posChanged || rotChanged {
+		if posChanged || rotChanged || driven {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
-		if velChanged {
-			v.ViewEntityVelocity(m.e, m.vel)
+		if velChanged && !driven {
+			v.ViewEntityVelocity(m.e, vel)
 		}
 	}
 }
+
+// restingFall is the greatest fall an Entity standing on a block can have: the
+// single tick of gravity holding it against that block.
+const restingFall = 0.09
 
 // Position returns the position as a result of the Movement as an mgl64.Vec3.
 func (m *Movement) Position() mgl64.Vec3 {

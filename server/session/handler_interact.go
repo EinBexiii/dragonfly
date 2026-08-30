@@ -11,13 +11,24 @@ import (
 type InteractHandler struct{}
 
 // Handle ...
-func (h *InteractHandler) Handle(p packet.Packet, s *Session, _ *world.Tx, c Controllable) error {
+func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.Interact)
 	pos := c.Position()
 
 	switch pk.ActionType {
 	case packet.InteractActionMouseOverEntity:
 		// We don't need this action.
+	case packet.InteractActionLeaveVehicle:
+		// The mount answers: one that reads the request as something else keeps
+		// hold of its rider.
+		if m := c.H().Mount(); m != nil {
+			if mount, ok := m.Entity(tx); ok {
+				if d, ok := mount.(world.Dismounter); ok && !d.AllowDismount(c) {
+					return nil
+				}
+			}
+		}
+		tx.Dismount(c)
 	case packet.InteractActionOpenInventory:
 		if s.invOpened {
 			// When there is latency, this might end up being sent multiple times. If we send a ContainerOpen

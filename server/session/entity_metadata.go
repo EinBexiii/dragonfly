@@ -91,9 +91,24 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	if c, ok := e.(arrow); ok && c.Critical() {
 		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagCritical)
 	}
+	// Everything the world resolves against blocks says so, not only a player.
+	// A client that runs its own simulation of a mount reads collision from
+	// this flag alone. A game mode without collision still takes it away.
+	collides := true
 	if g, ok := e.(gameMode); ok {
-		if g.GameMode().HasCollision() {
-			m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
+		collides = g.GameMode().HasCollision()
+	}
+	if collides {
+		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
+	}
+	if ent, ok := e.(world.Entity); ok {
+		if ent.H().Mount() != nil {
+			offset, seat := ent.H().SeatOffset()
+			writeSeat(m, offset, seat)
+		}
+		if _, ok := ent.(world.Rideable); ok {
+			// Seat zero drives, so that is the seat holding the reins.
+			m[protocol.EntityDataKeyControllingSeatIndex] = byte(0)
 		}
 	}
 	if o, ok := e.(orb); ok {

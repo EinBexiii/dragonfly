@@ -161,6 +161,8 @@ func (s *Session) ViewEntity(e world.Entity) {
 		Yaw:             float32(yaw),
 		HeadYaw:         float32(yaw),
 		BodyYaw:         float32(yaw),
+		EntityLinks:     s.entityLinks(e),
+		Attributes:      entityAttributes(e),
 	})
 }
 
@@ -191,6 +193,8 @@ func (s *Session) HideEntity(e world.Entity) {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 	}
+	delete(s.lastMove, id)
+	delete(s.lastVel, id)
 	s.entityMutex.Unlock()
 	if !ok {
 		// The entity was already removed some other way. We don't need to send a packet.
@@ -217,34 +221,108 @@ func (s *Session) ViewEntityDisplacement(e world.Entity, pos mgl64.Vec3, rot cub
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, true)
 }
 
+// viewEntityAbsoluteMovement shows a viewer where an Entity went, carrying only
+// the parts of it the client does not already hold. A client running its own
+// prediction of an Entity is corrected by every axis it is sent. A teleport is
+// the exception and goes whole.
 func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) {
-	flags := byte(0)
-	if onGround {
-		flags |= packet.MoveFlagOnGround
+	now := movement{
+		pos: vec64To32(pos.Add(entityOffset(e))),
+		rot: vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), rot.Yaw()}),
 	}
+	s.entityMutex.Lock()
+	last, sent := s.lastMove[id]
+	s.lastMove[id] = now
+	s.entityMutex.Unlock()
+
 	if authoritative {
-		flags |= packet.MoveFlagTeleport
+		flags := byte(packet.MoveFlagTeleport)
+		if onGround {
+			flags |= packet.MoveFlagOnGround
+		}
+		s.writePacket(&packet.MoveActorAbsolute{
+			EntityRuntimeID: id,
+			Position:        now.pos,
+			Rotation:        now.rot,
+			Flags:           flags,
+		})
+		return
 	}
-	s.writePacket(&packet.MoveActorAbsolute{
+	if !sent {
+		last = movement{pos: mgl32.Vec3{inf, inf, inf}, rot: mgl32.Vec3{inf, inf, inf}}
+	}
+	x, y, z, pitch, yaw := now.changed(last)
+	s.writePacket(&packet.MoveActorDelta{
 		EntityRuntimeID: id,
-		Position:        vec64To32(pos.Add(entityOffset(e))),
-		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), rot.Yaw()}),
-		Flags:           flags,
+		PositionX:       x,
+		PositionY:       y,
+		PositionZ:       z,
+		RotationX:       pitch,
+		RotationY:       yaw,
+		RotationYHead:   yaw,
+		OnGround:        onGround,
 	})
 }
 
-// ViewEntityVelocity ...
+// movement is the position and rotation a Session last sent for an Entity.
+type movement struct {
+	pos, rot mgl32.Vec3
+}
+
+// moveEpsilon is the distance below which a movement counts as none at all.
+const moveEpsilon = 1e-4
+
+// inf is the position held for an Entity never moved, so that its first
+// movement carries every part of it.
+var inf = float32(math.Inf(1))
+
+// changed returns the parts of m that b does not already hold.
+func (m movement) changed(b movement) (x, y, z, pitch, yaw protocol.Optional[float32]) {
+	set := func(a, b float32) protocol.Optional[float32] {
+		if math.Abs(float64(a-b)) < moveEpsilon {
+			return protocol.Optional[float32]{}
+		}
+		return protocol.Option(a)
+	}
+	return set(m.pos[0], b.pos[0]), set(m.pos[1], b.pos[1]), set(m.pos[2], b.pos[2]),
+		set(m.rot[0], b.rot[0]), set(m.rot[1], b.rot[1])
+}
+
+// ViewEntityVelocity tells a viewer how fast an Entity is going. A velocity the
+// client already holds is not repeated: it applies one to its own prediction of
+// the Entity, so the same value again is another push rather than a restatement.
 func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
 	}
-	s.writePacket(&packet.SetActorMotion{
-		EntityRuntimeID: s.entityRuntimeID(e),
-		Velocity:        vec64To32(velocity),
-	})
+	id, vel := s.entityRuntimeID(e), vec64To32(velocity)
+	s.entityMutex.Lock()
+	last, sent := s.lastVel[id]
+	s.lastVel[id] = vel
+	s.entityMutex.Unlock()
+	if sent && last.ApproxEqualThreshold(vel, moveEpsilon) {
+		return
+	}
+	s.writePacket(&packet.SetActorMotion{EntityRuntimeID: id, Velocity: vel})
 }
 
 // entityOffset returns the offset that entities have client-side.
+// entityAttributes returns the attributes an Entity's Behaviour carries. A
+// client driving a mount reads how fast and how high it may take it from them.
+func entityAttributes(e world.Entity) []protocol.AttributeValue {
+	ent, ok := e.(interface{ Behaviour() entity.Behaviour })
+	if !ok {
+		return nil
+	}
+	a, ok := ent.Behaviour().(interface {
+		EncodeEntityAttributes() []protocol.AttributeValue
+	})
+	if !ok {
+		return nil
+	}
+	return a.EncodeEntityAttributes()
+}
+
 func entityOffset(e world.Entity) mgl64.Vec3 {
 	if offset, ok := e.H().Type().(OffsetEntity); ok {
 		return mgl64.Vec3{0, offset.NetworkOffset()}
