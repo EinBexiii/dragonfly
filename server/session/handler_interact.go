@@ -30,6 +30,13 @@ func (h *InteractHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Co
 		}
 		tx.Dismount(c)
 	case packet.InteractActionOpenInventory:
+		if m := c.H().Mount(); m != nil {
+			// A player riding a mount opens the mount's own window rather than
+			// its own, the way a saddled horse opens its tack.
+			if mount, ok := m.Entity(tx); ok && s.OpenEntityInventory(mount, tx) {
+				return nil
+			}
+		}
 		if s.invOpened {
 			// When there is latency, this might end up being sent multiple times. If we send a ContainerOpen
 			// multiple times, the client crashes.
