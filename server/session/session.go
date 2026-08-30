@@ -93,6 +93,11 @@ type Session struct {
 	// openedEntity holds the Entity whose inventory the session has open, nil
 	// when the window it has open is not an Entity's.
 	openedEntity atomic.Pointer[world.EntityHandle]
+	// tradeNetID counts the network IDs a trade's recipes are sent under. A
+	// client keeps the offers it already holds unless every recipe it is sent
+	// carries an ID it has not seen, so the counter never repeats.
+	tradeNetID  atomic.Uint32
+	tradeBaseID atomic.Uint32
 
 	hudMu      sync.RWMutex
 	hudUpdates map[hud.Element]bool
@@ -212,6 +217,7 @@ func (conf Config) New(conn Conn) *Session {
 	}
 	s.viewLayer = world.NewViewLayer(s)
 	s.openedWindow.Store(inventory.New(1, nil))
+	s.tradeNetID.Store(1)
 	s.openedPos.Store(&cube.Pos{})
 
 	var scoreboardName string

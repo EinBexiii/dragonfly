@@ -71,8 +71,14 @@ func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
 		return
 	}
 	// An Entity's window belongs to no block, so it is let go of here rather
-	// than through a viewer the block would drop.
-	if s.openedEntity.Swap(nil) != nil {
+	// than through a viewer the block would drop. A trader is told its
+	// customer has gone before the window is dropped.
+	if h := s.openedEntity.Swap(nil); h != nil {
+		if e, ok := h.Entity(tx); ok {
+			if w, ok := e.(entity.TradeWatcher); ok {
+				w.TradeClosed()
+			}
+		}
 		return
 	}
 
@@ -316,6 +322,15 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		switch id {
 		case protocol.ContainerLevelEntity:
 			return s.openedWindow.Load(), true
+		case protocol.ContainerTradeIngredientOne, protocol.ContainerTradeIngredientTwo,
+			protocol.ContainerTradeResultPreview, protocol.ContainerTradeTwoIngredientOne,
+			protocol.ContainerTradeTwoIngredientTwo, protocol.ContainerTradeTwoResultPreview:
+			// The slots a trade lays its items out in are the session's own UI
+			// slots, the way an anvil's are. Leaving them unmapped rejects the
+			// whole request the client sends to strike a deal.
+			if s.openedContainerID.Load() == protocol.ContainerTypeTrade {
+				return s.ui, true
+			}
 		case protocol.ContainerHorseEquip:
 			if s.openedEntity.Load() != nil {
 				return s.openedWindow.Load(), true
