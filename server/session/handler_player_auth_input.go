@@ -18,8 +18,12 @@ type PlayerAuthInputHandler struct{}
 // Handle ...
 func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAuthInput)
-	if err := h.handleMovement(pk, s, c); err != nil {
-		return err
+	// A riding player is carried by its mount, so its own reported position is
+	// not what moves it.
+	if !h.handleRiding(pk, s, tx, c) {
+		if err := h.handleMovement(pk, s, c); err != nil {
+			return err
+		}
 	}
 	return h.handleActions(pk, s, tx, c)
 }
