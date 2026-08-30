@@ -398,6 +398,11 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			Position:  vec64To32(pos),
 			EventData: int32((((((abs(pa.Diff.X()) << 16) | (abs(pa.Diff.Y()) << 8)) | abs(pa.Diff.Z())) | xSign) | ySign) | zSign),
 		})
+	case particle.MobHappy:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeVillagerHappy,
+			Position:  vec64To32(pos),
+		})
 	case particle.Note:
 		s.writePacket(&packet.BlockEvent{
 			EventType: pa.Instrument.Int32(),
@@ -546,6 +551,16 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
+	case sound.MobHurt:
+		pk.SoundType, pk.EntityType = packet.SoundEventHurt, so.Entity
+	case sound.MobDeath:
+		pk.SoundType, pk.EntityType = packet.SoundEventDeath, so.Entity
+	case sound.MobAmbient:
+		pk.SoundType, pk.EntityType = packet.SoundEventAmbient, so.Entity
+	case sound.MobEat:
+		pk.SoundType, pk.EntityType = packet.SoundEventEat, so.Entity
+	case sound.MobPlop:
+		pk.SoundType, pk.EntityType = packet.SoundEventPlop, so.Entity
 	case sound.EquipItem:
 		switch i := so.Item.(type) {
 		case item.Helmet:
@@ -1065,6 +1080,19 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
 		})
+	case entity.FeedAction:
+		// The event carries the eaten item as the client reads it: the item's
+		// network ID in the high bits, its metadata in the low ones.
+		var data int32
+		if !act.Item.Empty() {
+			it := instanceFromItem(s.br, act.Item)
+			data = it.Stack.ItemType.NetworkID<<16 | int32(it.Stack.MetadataValue)
+		}
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFeed,
+			EventData:       data,
+		})
 	case entity.DeathAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
@@ -1085,6 +1113,21 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFireworksExplode,
+		})
+	case entity.TamingFailedAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingFailed,
+		})
+	case entity.TamingSucceededAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingSucceeded,
+		})
+	case entity.LoveHeartsAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventLoveHearts,
 		})
 	case entity.EatAction:
 		if user, ok := e.(item.User); ok {

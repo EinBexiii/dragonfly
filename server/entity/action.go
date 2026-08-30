@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
 	"time"
 )
@@ -59,8 +60,28 @@ type FireworkExplosionAction struct{ action }
 // TotemUseAction is a world.EntityAction that displays the totem use particles and animation.
 type TotemUseAction struct{ action }
 
+// TamingFailedAction is a world.EntityAction that makes an entity display the smoke particles of a failed
+// taming attempt.
+type TamingFailedAction struct{ action }
+
+// TamingSucceededAction is a world.EntityAction that makes an entity display the heart particles of a
+// successful taming attempt.
+type TamingSucceededAction struct{ action }
+
+// LoveHeartsAction is a world.EntityAction that makes an entity display breeding heart particles.
+type LoveHeartsAction struct{ action }
+
 // action implements the Action interface. Structures in this package may embed it to gets its functionality
 // out of the box.
 type action struct{}
 
 func (action) EntityAction() {}
+
+// FeedAction is a world.EntityAction that plays the animation an entity shows
+// when it is fed an item it accepts.
+type FeedAction struct {
+	// Item is the item the entity is fed, which decides the particles the
+	// client shows it eating.
+	Item item.Stack
+	action
+}
