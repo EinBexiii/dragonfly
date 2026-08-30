@@ -2619,6 +2619,16 @@ func (p *Player) ShowEntity(e world.Entity) {
 	}
 }
 
+// OpenEntityInventory opens the inventory that an entity carries, such as the
+// saddle and armour slots of a horse. It reports whether a window opened: an
+// entity that carries no inventory, or a player without a session, has none.
+func (p *Player) OpenEntityInventory(e world.Entity) bool {
+	if p.session() == session.Nop {
+		return false
+	}
+	return p.session().OpenEntityInventory(e, p.Tx())
+}
+
 // Latency returns a rolling average of latency between the sending and the receiving end of the connection of
 // the player.
 // The latency returned is updated continuously and is half the round trip time (RTT).

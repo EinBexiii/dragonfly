@@ -90,6 +90,9 @@ type Session struct {
 	blobs                 map[uint64][]byte
 	openChunkTransactions []map[uint64]struct{}
 	invOpened             bool
+	// openedEntity holds the Entity whose inventory the session has open, nil
+	// when the window it has open is not an Entity's.
+	openedEntity atomic.Pointer[world.EntityHandle]
 
 	hudMu      sync.RWMutex
 	hudUpdates map[hud.Element]bool

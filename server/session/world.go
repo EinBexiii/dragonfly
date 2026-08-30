@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -1476,4 +1477,86 @@ func abs(a int) int {
 		return -a
 	}
 	return a
+}
+
+// OpenEntityInventory opens the inventory that an entity carries, such as the
+// saddle and armour slots of a horse. Unlike a block container, the window is
+// bound to the entity: the client keeps it open while the entity is in view.
+// OpenEntityInventory reports whether it opened a window: an entity that
+// carries no inventory, or one the session cannot see, has none to open.
+func (s *Session) OpenEntityInventory(e world.Entity, tx *world.Tx) bool {
+	carrier, ok := e.(entity.InventoryCarrier)
+	if !ok || s.entityHidden(e) {
+		return false
+	}
+	id := s.entityRuntimeID(e)
+	if id == 0 {
+		return false
+	}
+	inv, slots := carrier.CarriedInventory()
+	if inv == nil {
+		// The carrier refuses to be opened right now, the way an untamed horse
+		// has no window to show.
+		return false
+	}
+
+	if s.containerOpened.Load() {
+		if s.openedEntity.Load() == e.H() {
+			// Already open on this entity; see OpenTrade.
+			return true
+		}
+		s.closeCurrentContainer(tx, false)
+	}
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.invOpened = false
+	s.openedWindow.Store(inv)
+	s.openedEntity.Store(e.H())
+	pos := cube.PosFromVec3(e.Position())
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(protocol.ContainerTypeHorse)
+
+	// Like a trade window, this one opens on its contents alone.
+	data, err := nbt.MarshalEncoding(map[string]any{"slots": equipSlots(slots)}, nbt.NetworkLittleEndian)
+	if err != nil {
+		s.conf.Log.Debug("open entity inventory: encode slots: " + err.Error())
+		return false
+	}
+	s.writePacket(&packet.UpdateEquip{
+		WindowID:                nextID,
+		WindowType:              protocol.ContainerTypeHorse,
+		Size:                    int32(inv.Size()),
+		EntityUniqueID:          int64(id),
+		SerialisedInventoryData: data,
+	})
+	s.sendInv(inv, uint32(nextID))
+	return true
+}
+
+// equipSlots describes the equipment slots of an entity window the way the
+// client expects them: an outline item and the list of items the slot takes.
+func equipSlots(slots []entity.InventorySlot) []map[string]any {
+	l := make([]map[string]any, 0, len(slots))
+	for _, slot := range slots {
+		accepted := make([]map[string]any, 0, len(slot.Accepts))
+		for _, it := range slot.Accepts {
+			accepted = append(accepted, map[string]any{"slotItem": slotItem(it)})
+		}
+		l = append(l, map[string]any{
+			"acceptedItems": accepted,
+			"item":          slotItem(slot.Icon),
+			"slotNumber":    int32(slot.Slot),
+		})
+	}
+	return l
+}
+
+// slotItem names an item in an entity window's slot description. The client
+// matches on the name alone, so the aux value is left wild.
+func slotItem(it world.Item) map[string]any {
+	var name string
+	if it != nil {
+		name, _ = it.EncodeItem()
+	}
+	return map[string]any{"Aux": int16(math.MaxInt16), "Name": name}
 }
