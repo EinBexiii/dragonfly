@@ -77,6 +77,7 @@ type LivingState struct {
 	absorption float64
 	dead       bool
 	deathSrc   world.DamageSource
+	deathTicks int
 }
 
 // NewLivingState returns a LivingState with the health passed and vanilla defaults for the remaining
@@ -423,6 +424,11 @@ func (e *LivingEnt) damageItem(s item.Stack, d int) item.Stack {
 	return s
 }
 
+// deathDuration is how long a dead entity stays before it is removed, the time
+// its death animation takes. Measured against BDS: an entity keeps being sent
+// for 0.91 seconds after its death event.
+const deathDuration = 20
+
 // Tick ticks the entity. A dead entity plays its death animation, has the Behaviour's HandleDeath called if
 // implemented and is closed. A living entity is damaged by the void, fire, suffocation and drowning where
 // applicable, dispatches the contact hooks of the blocks it is inside of, and has its effects ticked before
@@ -430,13 +436,19 @@ func (e *LivingEnt) damageItem(s item.Stack, d int) item.Stack {
 func (e *LivingEnt) Tick(tx *world.Tx, current int64) {
 	s := e.state()
 	if s.dead {
-		// The death animation and removal go out in the same tick: clients play the animation on the
-		// removed entity themselves.
-		e.PlayAction(DeathAction{})
-		if h, ok := e.Behaviour().(LivingDeathHandler); ok {
-			h.HandleDeath(e, tx, s.deathSrc)
+		// A dead entity stays for its death animation before it is removed: a
+		// client plays the animation on the entity itself, and one taken away
+		// in the same tick simply disappears. A capture of BDS measures the
+		// wait at deathDuration.
+		if s.deathTicks == 0 {
+			e.PlayAction(DeathAction{})
+			if h, ok := e.Behaviour().(LivingDeathHandler); ok {
+				h.HandleDeath(e, tx, s.deathSrc)
+			}
 		}
-		_ = e.Close()
+		if s.deathTicks++; s.deathTicks >= deathDuration {
+			_ = e.Close()
+		}
 		return
 	}
 	if e.data.Pos[1] < float64(tx.Range()[0]) && current%10 == 0 {
