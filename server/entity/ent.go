@@ -58,15 +58,15 @@ func (e *Ent) Data() *world.EntityData {
 	return e.data
 }
 
-// Unwrap returns the Ent itself. It is promoted by entities that embed Ent, so that the underlying Ent can
-// be recognised wherever behaviour hooks are dispatched.
-func (e *Ent) Unwrap() *Ent {
+// Base returns the Ent itself. It is promoted by entities that embed Ent, so that the underlying Ent can be
+// recognised wherever behaviour hooks are dispatched.
+func (e *Ent) Base() *Ent {
 	return e
 }
 
 // wrappedEnt is implemented by any entity carrying an Ent: the Ent itself or a struct embedding it.
 type wrappedEnt interface {
-	Unwrap() *Ent
+	Base() *Ent
 }
 
 // Hurt dispatches damage to the entity's Behaviour if it implements DamageableBehaviour and reports the

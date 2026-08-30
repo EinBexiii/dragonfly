@@ -33,7 +33,7 @@ func HurtEntity(e world.Entity, damage float64, src world.DamageSource) (n float
 		return n, vulnerable, true
 	}
 	if w, ok := e.(wrappedEnt); ok {
-		ent := w.Unwrap()
+		ent := w.Base()
 		if _, ok := ent.Behaviour().(DamageableBehaviour); ok {
 			n, vulnerable = ent.Hurt(damage, src)
 			return n, vulnerable, true
@@ -48,7 +48,7 @@ func DamageableEntity(e world.Entity) bool {
 		return true
 	}
 	if w, ok := e.(wrappedEnt); ok {
-		_, ok = w.Unwrap().Behaviour().(DamageableBehaviour)
+		_, ok = w.Base().Behaviour().(DamageableBehaviour)
 		return ok
 	}
 	return false

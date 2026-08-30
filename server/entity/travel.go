@@ -297,7 +297,7 @@ func (t *PortalTravelComputer) finishTravel(e Traveller, pos mgl64.Vec3, source,
 // non-Ent travellers that implement PortalTravelHandler.
 func handlePortalTravel(e Traveller, source, destination world.Dimension) {
 	if w, ok := e.(wrappedEnt); ok {
-		if h, ok := w.Unwrap().Behaviour().(PortalTravelHandler); ok {
+		if h, ok := w.Base().Behaviour().(PortalTravelHandler); ok {
 			h.HandlePortalTravel(source, destination)
 			return
 		}

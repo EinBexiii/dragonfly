@@ -41,11 +41,8 @@ func FinalDamage(dmg float64, src world.DamageSource, armour *inventory.Armour, 
 
 // Fall lands an entity that fell the distance passed. The block landed on may soften the distance, a jump
 // boost effect reduces it further and the remainder is dealt as fall damage.
-func Fall(e interface {
-	world.Entity
-	Hurt(damage float64, src world.DamageSource) (n float64, vulnerable bool)
-}, tx *world.Tx, effects *EffectManager, distance float64) {
-	CheckEntityLanders(tx, e, e.H().Type().BBox(e).Translate(e.Position()), &distance)
+func Fall(e Hurtable, tx *world.Tx, effects *EffectManager, distance float64) {
+	distance = CheckEntityLanders(tx, e, e.H().Type().BBox(e).Translate(e.Position()), distance)
 
 	dmg := distance - 3
 	if boost, ok := effects.Effect(effect.JumpBoost); ok {
