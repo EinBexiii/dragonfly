@@ -28,16 +28,10 @@ func pushOutOfBlock(e *Ent, tx *world.Tx) *Movement {
 
 // obstructed reports whether any block intersects the bounding box passed.
 func obstructed(tx *world.Tx, box cube.BBox) bool {
-	min, max := cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())
-	for x := min[0]; x <= max[0]; x++ {
-		for y := min[1]; y <= max[1]; y++ {
-			for z := min[2]; z <= max[2]; z++ {
-				pos := cube.Pos{x, y, z}
-				for _, blockBox := range tx.Block(pos).Model().BBox(pos, tx) {
-					if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
-						return true
-					}
-				}
+	for pos := range cube.Range3D(cube.PosFromVec3(box.Min()), cube.PosFromVec3(box.Max())) {
+		for _, blockBox := range tx.Block(pos).Model().BBox(pos, tx) {
+			if blockBox.Translate(pos.Vec3()).IntersectsWith(box) {
+				return true
 			}
 		}
 	}
