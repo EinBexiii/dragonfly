@@ -156,7 +156,9 @@ func (h PlayerAuthInputHandler) handleInputFlags(flags protocol.InputFlags, s *S
 			c.StartFlying()
 		}
 	}
-	if flags.Load(packet.InputFlagStopFlying) {
+	if flags.Load(packet.InputFlagStopFlying) && c.GameMode().HasCollision() {
+		// A mode without collision, spectator, flies permanently. A vanilla
+		// server answers the client's request to stop with nothing at all.
 		c.StopFlying()
 	}
 }
