@@ -2424,6 +2424,13 @@ func (p *Player) OpenBlockContainer(pos cube.Pos, tx *world.Tx) {
 	}
 }
 
+func (p *Player) OpenEntityInventory(e world.Entity) bool {
+	if p.session() == session.Nop {
+		return false
+	}
+	return p.session().OpenEntityInventory(e, p.Tx())
+}
+
 // Latency returns a rolling average of latency between the sending and the receiving end of the connection of
 // the player.
 // The latency returned is updated continuously and is half the round trip time (RTT).
