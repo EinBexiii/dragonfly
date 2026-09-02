@@ -1357,16 +1357,16 @@ func (p *Player) EnderChestInventory() *inventory.Inventory {
 // SetGameMode sets the game mode of a player. The game mode specifies the way that the player can interact
 // with the world that it is in.
 func (p *Player) SetGameMode(mode world.GameMode) {
-	previous := p.GameMode()
 	p.gameMode = mode
 
 	if !mode.AllowsFlying() {
 		p.StopFlying()
 	}
-	if !mode.Visible() {
-		p.SetInvisible()
-	} else if !previous.Visible() {
-		p.SetVisible()
+	if !mode.HasCollision() {
+		// A mode without collision flies permanently. Measured on BDS: the
+		// client hides a spectator from others by game type alone, so no
+		// invisibility is set here.
+		p.flying = true
 	}
 
 	p.session().SendGameMode(p)
@@ -1417,6 +1417,9 @@ func (p *Player) SetCooldown(item world.Item, cooldown time.Duration) {
 // unless the held item implements the item.Usable interface, in which case it will be activated.
 // This generally happens for items such as throwable items like snowballs.
 func (p *Player) UseItem() {
+	if !p.GameMode().AllowsInteraction() {
+		return
+	}
 	i, _ := p.HeldItems()
 	ctx := NewEventContext(p.Tx(), p)
 	if p.HasCooldown(i.Item()) {

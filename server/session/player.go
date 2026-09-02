@@ -537,25 +537,26 @@ func (s *Session) SendGameMode(c Controllable) {
 	if s == Nop {
 		return
 	}
-	s.writePacket(&packet.SetPlayerGameType{GameType: gameTypeFromMode(c.GameMode())})
+	// A vanilla server changes a player's own game mode with the same packet
+	// it tells other players with, addressed to the player's own unique ID.
+	s.writePacket(&packet.UpdatePlayerGameType{GameType: gameTypeFromMode(c.GameMode()), PlayerUniqueID: selfEntityRuntimeID})
 	s.SendAbilities(c)
 }
 
 // SendAbilities sends the abilities of the Controllable entity of the session to the client.
 func (s *Session) SendAbilities(c Controllable) {
+	s.writePacket(&packet.UpdateAbilities{AbilityData: abilityData(c, selfEntityRuntimeID)})
+}
+
+// abilityData returns the abilities of a Controllable as a client is told them,
+// both for its own player and in the AddPlayer of another.
+func abilityData(c Controllable, uniqueID int64) protocol.AbilityData {
 	mode, abilities := c.GameMode(), uint32(0)
 	if mode.AllowsFlying() {
 		abilities |= protocol.AbilityMayFly
 		if c.Flying() {
 			abilities |= protocol.AbilityFlying
 		}
-	}
-	if !mode.HasCollision() {
-		abilities |= protocol.AbilityNoClip
-		defer c.StartFlying()
-		// If the client is currently on the ground and turned to spectator mode, it will be unable to sprint during
-		// flight. In order to allow this, we force the client to be flying through a MovePlayer packet.
-		s.ViewEntityTeleport(c, c.Position())
 	}
 	if !mode.AllowsTakingDamage() {
 		abilities |= protocol.AbilityInvulnerable
@@ -569,21 +570,35 @@ func (s *Session) SendAbilities(c Controllable) {
 	if mode.AllowsInteraction() {
 		abilities |= protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers | protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs
 	}
-	s.writePacket(&packet.UpdateAbilities{AbilityData: protocol.AbilityData{
-		EntityUniqueID:     selfEntityRuntimeID,
+	var layers []protocol.AbilityLayer
+	if spectator(mode) {
+		// Measured on BDS 1.26.45: a spectator carries a layer of its own
+		// ahead of the base layer, and the base layer keeps the survival set
+		// with none of the flying or invulnerability bits.
+		layers = append(layers, protocol.AbilityLayer{
+			Type: protocol.AbilityLayerTypeSpectator,
+			Abilities: protocol.AbilityBuild | protocol.AbilityMine | protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers |
+				protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs | protocol.AbilityInvulnerable | protocol.AbilityFlying |
+				protocol.AbilityMayFly | protocol.AbilityInstantBuild | protocol.AbilityNoClip,
+			Values: protocol.AbilityInvulnerable | protocol.AbilityFlying | protocol.AbilityNoClip,
+		})
+		abilities = protocol.AbilityBuild | protocol.AbilityMine | protocol.AbilityDoorsAndSwitches | protocol.AbilityOpenContainers |
+			protocol.AbilityAttackPlayers | protocol.AbilityAttackMobs
+	}
+	layers = append(layers, protocol.AbilityLayer{
+		Type:             protocol.AbilityLayerTypeBase,
+		Abilities:        protocol.AbilityCount - 1,
+		Values:           abilities,
+		FlySpeed:         float32(c.FlightSpeed()),
+		VerticalFlySpeed: float32(c.VerticalFlightSpeed()),
+		WalkSpeed:        protocol.AbilityBaseWalkSpeed,
+	})
+	return protocol.AbilityData{
+		EntityUniqueID:     uniqueID,
 		PlayerPermissions:  packet.PermissionLevelMember,
 		CommandPermissions: protocol.CommandPermissionLevelAny,
-		Layers: []protocol.AbilityLayer{
-			{
-				Type:             protocol.AbilityLayerTypeBase,
-				Abilities:        protocol.AbilityCount - 1,
-				Values:           abilities,
-				FlySpeed:         float32(c.FlightSpeed()),
-				VerticalFlySpeed: float32(c.VerticalFlightSpeed()),
-				WalkSpeed:        protocol.AbilityBaseWalkSpeed,
-			},
-		},
-	}})
+		Layers:             layers,
+	}
 }
 
 // SendHealth sends the health and max health to the player.
@@ -1351,7 +1366,17 @@ func gameTypeFromMode(mode world.GameMode) int32 {
 	if mode.AllowsFlying() && mode.CreativeInventory() {
 		return packet.GameTypeCreative
 	}
+	if spectator(mode) {
+		return packet.GameTypeSpectator
+	}
 	return packet.GameTypeSurvival
+}
+
+// spectator reports whether a game mode is spectator to the client: the client
+// hides the HUD and the player from others for that game type alone, not for
+// survival with abilities.
+func spectator(mode world.GameMode) bool {
+	return !mode.Visible() && !mode.HasCollision()
 }
 
 // The following functions use the go:linkname directive in order to make sure the item.byID and item.toID
