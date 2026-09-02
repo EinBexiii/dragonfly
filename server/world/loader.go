@@ -48,10 +48,16 @@ func (l *Loader) ChangeWorld(tx *Tx, new *World) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	loaded := maps.Clone(l.loaded)
-	l.w.exec(func(tx *Tx) {
+	// The Viewer is captured here: the removal runs after this lock is released
+	// and a Close in between clears the field.
+	loaded, viewer := maps.Clone(l.loaded), l.viewer
+	// The removal is scheduled rather than queued directly: this runs on the goroutine of the World being changed to,
+	// and a World only accepts work on its own goroutine, so queuing it here would block that goroutine until the
+	// World being left has room for it. Two Loaders changing worlds in opposite directions would then wait on each
+	// other forever.
+	l.w.Do(func(tx *Tx) {
 		for pos := range loaded {
-			tx.World().removeViewer(tx, pos, l, l.viewer)
+			tx.World().removeViewer(tx, pos, l, viewer)
 		}
 	})
 	clear(l.loaded)
