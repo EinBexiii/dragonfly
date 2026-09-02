@@ -2431,6 +2431,15 @@ func (p *Player) OpenEntityInventory(e world.Entity) bool {
 	return p.session().OpenEntityInventory(e, p.Tx())
 }
 
+// OpenTrade opens the trade window of an entity that trades with players, such
+// as a villager. It does nothing for an entity that does not trade, or if the
+// player has no session connected to it.
+func (p *Player) OpenTrade(e world.Entity) {
+	if p.session() != session.Nop {
+		p.session().OpenTrade(e, p, p.Tx())
+	}
+}
+
 // Latency returns a rolling average of latency between the sending and the receiving end of the connection of
 // the player.
 // The latency returned is updated continuously and is half the round trip time (RTT).

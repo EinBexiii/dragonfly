@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"math"
 	"math/rand/v2"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1689,4 +1690,167 @@ func slotItem(it world.Item) map[string]any {
 		name, _ = it.EncodeItem()
 	}
 	return map[string]any{"Aux": int16(math.MaxInt16), "Name": name}
+}
+
+// OpenTrade opens the trade window of an entity that trades with players, such
+// as a villager. Like an entity inventory, the window is bound to the entity
+// rather than to a block position. OpenTrade does nothing for an entity that
+// does not trade or that the session cannot see.
+func (s *Session) OpenTrade(e world.Entity, customer world.Entity, tx *world.Tx) {
+	trader, ok := e.(entity.Trader)
+	if !ok || s.entityHidden(e) {
+		return
+	}
+	id := s.entityRuntimeID(e)
+	if id == 0 {
+		return
+	}
+	if s.containerOpened.Load() {
+		if s.openedEntity.Load() == e.H() {
+			// The window is already open on this trader. Opening it again
+			// would close and reopen it under the client every time the
+			// player clicks, which leaves it flickering and out of step.
+			return
+		}
+		// A window opened over another leaves the first one hanging on the
+		// server, because the client only ever closes the one it shows.
+		s.closeCurrentContainer(tx, false)
+	}
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.invOpened = false
+	s.openedWindow.Store(inventory.New(1, nil))
+	s.openedEntity.Store(e.H())
+	pos := cube.PosFromVec3(e.Position())
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(protocol.ContainerTypeTrade)
+	if w, ok := trader.(entity.TradeWatcher); ok {
+		w.TradeOpened(customer)
+	}
+
+	// A trade window opens on its offers alone: a capture of a real Bedrock
+	// server shows no ContainerOpen for one.
+	s.sendTrade(trader, id, nextID)
+}
+
+// sendTrade writes the offers of a trader to the window ID passed, filling the
+// window announced for it.
+func (s *Session) sendTrade(trader entity.Trader, id uint64, windowID byte) {
+	offers, tier, name := trader.TradeOffers()
+	base := s.tradeNetID.Add(uint32(len(offers))+2) - (uint32(len(offers)) + 1)
+	s.tradeBaseID.Store(base)
+	data, err := nbt.MarshalEncoding(map[string]any{
+		"Recipes":             tradeRecipes(offers, tier, base),
+		"TierExpRequirements": tradeTiers(),
+	}, nbt.NetworkLittleEndian)
+	if err != nil {
+		s.conf.Log.Debug("send trade: encode offers: " + err.Error())
+		return
+	}
+	s.writePacket(&packet.UpdateTrade{
+		WindowID:          windowID,
+		WindowType:        protocol.ContainerTypeTrade,
+		TradeTier:         int32(max(tier, 0)),
+		VillagerUniqueID:  int64(id),
+		EntityUniqueID:    selfEntityRuntimeID,
+		DisplayName:       name,
+		NewTradeUI:        true,
+		DemandBasedPrices: true,
+		SerialisedOffers:  data,
+	})
+}
+
+// trader returns the entity.Trader whose trade window the Session has open. The
+// bool returned is false if no trade window is open or if the trader left the
+// world after it was opened.
+func (s *Session) trader(tx *world.Tx) (entity.Trader, bool) {
+	if !s.containerOpened.Load() || s.openedContainerID.Load() != protocol.ContainerTypeTrade {
+		return nil, false
+	}
+	handle := s.openedEntity.Load()
+	if handle == nil {
+		return nil, false
+	}
+	e, ok := handle.Entity(tx)
+	if !ok {
+		return nil, false
+	}
+	trader, ok := e.(entity.Trader)
+	return trader, ok
+}
+
+// tradeRecipes encodes the offers of a trader that has reached the tier passed
+// the way the client reads them from a trade window.
+// tradeRecipes encodes the offers of a trader that has reached the tier passed,
+// numbered from base. Every send gives its offers numbers of their own: a
+// client holds on to the offers it already has when they come back under the
+// numbers it knows, so offers a new tier unlocked would never appear.
+func tradeRecipes(offers []entity.Offer, tier int, base uint32) []map[string]any {
+	l := make([]map[string]any, 0, len(offers)+1)
+	for i, o := range offers {
+		l = append(l, tradeRecipe(base+uint32(i), o))
+	}
+	if tier < len(tradeTierExperience)-1 {
+		// The client draws the experience bar of a trader that can still
+		// advance only if an offer of a tier past the last one exists. This
+		// offer has no items and no uses, so the window never shows it.
+		l = append(l, tradeRecipe(base+uint32(len(offers)), entity.Offer{Tier: len(tradeTierExperience)}))
+	}
+	return l
+}
+
+// tradeRecipe encodes a single offer shown at the index passed in the trade
+// window.
+func tradeRecipe(netID uint32, o entity.Offer) map[string]any {
+	uses, maxUses := max(o.Uses, 0), max(o.MaxUses, 0)
+	if uses >= maxUses {
+		// The client shows an offer that has no uses left as out of stock.
+		maxUses = 0
+	}
+	return map[string]any{
+		"netId":            int32(netID),
+		"uses":             int32(uses),
+		"maxUses":          int32(maxUses),
+		"traderExp":        int32(o.Experience),
+		"rewardExp":        boolByte(o.RewardsExperience),
+		"tier":             int32(max(o.Tier, 0)),
+		"demand":           int32(o.Demand),
+		"priceMultiplierA": float32(o.PriceMultiplier),
+		"priceMultiplierB": float32(0),
+		"buyCountA":        int32(max(o.Wanted[0].Count(), 0)),
+		"buyCountB":        int32(max(o.Wanted[1].Count(), 0)),
+		"buyA":             item.WriteNBT(tradePrice(o), true),
+		"buyB":             item.WriteNBT(o.Wanted[1], true),
+		"sell":             item.WriteNBT(o.Given, true),
+	}
+}
+
+// tradePrice returns the first item an offer asks for, with the price rise that
+// the demand for the offer causes folded into its count.
+func tradePrice(o entity.Offer) item.Stack {
+	price := o.Wanted[0]
+	if price.Empty() {
+		return price
+	}
+	rise := max(int(float64(price.Count())*float64(o.Demand)*o.PriceMultiplier), 0)
+	return price.Grow(min(rise, price.MaxCount()-price.Count()))
+}
+
+// tradeTierExperience holds the experience a trader must have earned to reach
+// each of its trading tiers.
+var tradeTierExperience = [...]int32{0, 10, 70, 150, 250}
+
+// tradeTiers lists the experience the trading tiers require the way the client
+// reads them, every tier being a compound keyed by the tier itself.
+func tradeTiers() []map[string]any {
+	l := make([]map[string]any, 0, len(tradeTierExperience))
+	for tier, exp := range tradeTierExperience {
+		l = append(l, map[string]any{strconv.Itoa(tier): exp})
+	}
+	return l
+}
+
+// tradeBase returns the number the offers of the open trade window start at.
+func (s *Session) tradeBase() uint32 {
+	return s.tradeBaseID.Load()
 }
