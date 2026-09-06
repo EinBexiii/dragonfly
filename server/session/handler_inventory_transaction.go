@@ -196,7 +196,7 @@ func (h *InventoryTransactionHandler) handleUseItemTransaction(data *protocol.Us
 		if c.GameMode().CreativeInventory() {
 			c.BreakBlock(pos)
 		} else {
-			c.FinishBreaking()
+			c.FinishBreakingAt(pos)
 		}
 	case protocol.UseItemActionClickBlock:
 		c.UseItemOnBlock(pos, cube.Face(data.BlockFace), vec32To64(data.ClickedPosition))

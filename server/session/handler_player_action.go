@@ -35,12 +35,13 @@ func handlePlayerAction(action int32, face int32, pos protocol.BlockPos, entityR
 
 		s.breakingPos = cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])}
 		c.StartBreaking(s.breakingPos, cube.Face(face))
-	case protocol.PlayerActionAbortBreak:
+	case protocol.PlayerActionAbortBreak, protocol.PlayerActionStopBreak:
+		// Releasing the button stops the break; only a prediction finishes.
 		c.AbortBreaking()
-	case protocol.PlayerActionPredictDestroyBlock, protocol.PlayerActionStopBreak:
+	case protocol.PlayerActionPredictDestroyBlock:
 		s.swingingArm.Store(true)
 		defer s.swingingArm.Store(false)
-		c.FinishBreaking()
+		c.FinishBreakingAt(cube.Pos{int(pos[0]), int(pos[1]), int(pos[2])})
 	case protocol.PlayerActionCrackBreak:
 		// Don't do anything for this action. It is no longer used. Block
 		// cracking is done fully server-side.
