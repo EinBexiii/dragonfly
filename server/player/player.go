@@ -482,7 +482,8 @@ func (p *Player) fall(distance float64) {
 // respawn.
 // If the damage passed is negative, Hurt will not do anything. Hurt returns the
 // final damage dealt to the Player and if the Player was vulnerable to this
-// kind of damage.
+// kind of damage; a hit inside the immunity window that only deals its excess
+// over the hit that armed it is not, so it knocks back nothing.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
@@ -543,14 +544,18 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		}
 	}
 
-	pos := p.Position()
-	for _, viewer := range p.viewers() {
-		viewer.ViewEntityAction(p, entity.HurtAction{})
-	}
-	if src.Fire() {
-		p.Tx().PlaySound(pos, sound.Burning{})
-	} else if _, ok := src.(entity.DrowningDamageSource); ok {
-		p.Tx().PlaySound(pos, sound.Drowning{})
+	// A hit inside the immunity window deals only its excess: no hurt
+	// animation, no sound, and callers knock back only a vulnerable target.
+	if !immune {
+		pos := p.Position()
+		for _, viewer := range p.viewers() {
+			viewer.ViewEntityAction(p, entity.HurtAction{})
+		}
+		if src.Fire() {
+			p.Tx().PlaySound(pos, sound.Burning{})
+		} else if _, ok := src.(entity.DrowningDamageSource); ok {
+			p.Tx().PlaySound(pos, sound.Drowning{})
+		}
 	}
 
 	p.Wake()
@@ -558,7 +563,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		p.kill(src)
 	}
-	return totalDamage, true
+	return totalDamage, !immune
 }
 
 // applyTotemEffects is an unexported function that is used to handle totem effects.
