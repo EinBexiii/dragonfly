@@ -215,7 +215,7 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 	if s.Health.Health() <= 0 {
 		s.dead, s.deathSrc = true, src
 	}
-	return damageLeft, !immune
+	return damageLeft, true
 }
 
 // Heal heals the entity for a given amount of health, up to its maximum health, and returns the amount of
@@ -233,7 +233,7 @@ func (e *LivingEnt) Heal(health float64, _ world.HealingSource) float64 {
 // KnockBack knocks the entity back away from the source position passed. The knock back resistance of the
 // entity's LivingState and its worn armour is applied. A dead entity is not knocked back.
 func (e *LivingEnt) KnockBack(src mgl64.Vec3, force, height float64) {
-	if e.state().dead {
+	if s := e.state(); s.dead || s.Immunity.Absorbing() {
 		return
 	}
 	velocity := KnockBackVector(e.Position(), src, force, height)
