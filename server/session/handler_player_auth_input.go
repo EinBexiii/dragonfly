@@ -182,7 +182,13 @@ func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransacti
 	// Seems like this is only used for breaking blocks at the moment.
 	switch data.ActionType {
 	case protocol.UseItemActionBreakBlock:
-		c.BreakBlock(pos)
+		// Survival breaks go through the timed break the client started;
+		// only creative breaks a block outright.
+		if c.GameMode().CreativeInventory() {
+			c.BreakBlock(pos)
+		} else {
+			c.FinishBreaking()
+		}
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType for PlayerAuthInput packet %v", data.ActionType)
 	}

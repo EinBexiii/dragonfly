@@ -94,7 +94,7 @@ type playerData struct {
 	breakingPos       cube.Pos
 	breakingFace      cube.Face
 	lastBreakDuration time.Duration
-	breakStart        time.Time
+	breakProgress     float64 // of the break time, accumulated per tick at the duration of that tick
 
 	breakCounter uint32
 
@@ -1792,6 +1792,11 @@ func (p *Player) AttackEntity(e world.Entity) bool {
 // immediately and the block will not be broken. StartBreaking will stop the breaking of any block that the
 // player might be breaking before this method is called.
 func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
+	if p.breaking && p.breakingPos == pos {
+		// The client repeats its start while it holds the block; the
+		// progress made so far is kept.
+		return
+	}
 	p.AbortBreaking()
 	if _, air := p.Tx().Block(pos).(block.Air); air || !p.canReach(pos.Vec3Centre()) {
 		// The block was either out of range or air, so it can't be broken by the player.
@@ -1827,7 +1832,7 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 		punchable.Punch(pos, face, p.Tx(), p)
 	}
 
-	p.breaking, p.breakingFace, p.breakStart = true, face, time.Now()
+	p.breaking, p.breakingFace, p.breakProgress = true, face, 0
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
@@ -1876,24 +1881,23 @@ func (p *Player) FinishBreaking() {
 		p.resendNearbyBlock(p.breakingPos)
 		return
 	}
-	// The server saw the start and sees the finish after the same one-way
-	// delay, so the elapsed time must match the break time it computed for
-	// the crack animation, up to jitter. A finish that comes early is a
-	// client breaking faster than its tool allows; the block is resent.
-	if need := p.lastBreakDuration; !p.GameMode().CreativeInventory() && need > 0 {
-		if elapsed := time.Since(p.breakStart); elapsed < need-need/5-breakSlack {
-			pos := p.breakingPos
-			p.AbortBreaking()
-			p.resendNearbyBlock(pos)
-			return
-		}
+	// The break time is accumulated per server tick at the duration that
+	// tick had, so a tool or effect change mid-break counts as it should;
+	// a finish reported before most of it is done is a client breaking
+	// faster than its tool allows, and the block is resent.
+	if !p.GameMode().CreativeInventory() && p.lastBreakDuration > 0 && p.breakProgress < breakProgressNeeded {
+		pos := p.breakingPos
+		p.AbortBreaking()
+		p.resendNearbyBlock(pos)
+		return
 	}
 	p.AbortBreaking()
 	p.BreakBlock(p.breakingPos)
 }
 
-// breakSlack is the jitter allowed on a break's elapsed time: two ticks.
-const breakSlack = 100 * time.Millisecond
+// breakProgressNeeded is the share of the break time a finish must have
+// accumulated; the rest covers the client's head start and jitter.
+const breakProgressNeeded = 0.75
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
@@ -1931,6 +1935,9 @@ func (p *Player) ContinueBreaking(face cube.Face) {
 			viewer.ViewBlockAction(pos, block.ContinueCrackAction{BreakTime: breakTime})
 		}
 		p.lastBreakDuration = breakTime
+	}
+	if d := p.lastBreakDuration; d > 0 {
+		p.breakProgress += float64(time.Second/20) / float64(d)
 	}
 }
 
