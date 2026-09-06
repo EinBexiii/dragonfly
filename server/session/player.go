@@ -265,6 +265,15 @@ func (s *Session) sendArmourTrimData() {
 	s.writePacket(&packet.TrimData{Patterns: trimPatterns, Materials: trimMaterials})
 }
 
+// sendInventories sends every inventory of the player and its held slot.
+func (s *Session) sendInventories() {
+	s.sendInv(s.inv, protocol.WindowIDInventory)
+	s.sendInv(s.ui, protocol.WindowIDUI)
+	s.sendInv(s.offHand, protocol.WindowIDOffHand)
+	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
+	s.writePacket(&packet.PlayerHotBar{SelectedHotBarSlot: *s.heldSlot, WindowID: protocol.WindowIDInventory, SelectHotBarSlot: true})
+}
+
 // sendInv sends the inventory passed to the client with the window ID.
 func (s *Session) sendInv(inv *inventory.Inventory, windowID uint32) {
 	pk := &packet.InventoryContent{
