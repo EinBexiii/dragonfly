@@ -264,10 +264,8 @@ type movement struct {
 	pos, rot mgl32.Vec3
 }
 
-// velocityWorthSending is false only for a zero repeating a zero. A non-zero
-// velocity is sent even when it equals the last one: the client treats the
-// packet as the new velocity, and two players standing still trading hits
-// produce the same knockback vector on every hit.
+// velocityWorthSending is false only for a zero repeating a zero: a repeated
+// non-zero velocity is a new impulse, such as two identical knockbacks.
 func velocityWorthSending(last mgl32.Vec3, sent bool, vel mgl32.Vec3) bool {
 	if !sent {
 		return true

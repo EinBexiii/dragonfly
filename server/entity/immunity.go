@@ -9,13 +9,8 @@ type AttackImmunity struct {
 	last  float64
 }
 
-// tickDuration is one world tick. A vanilla window of n ticks expires
-// somewhere between n−1 and n ticks after the hit, depending on where in
-// a tick the hit landed. Wall time is measured at processing time, after
-// the proxy's flush, the backend's flush and the wait for the world
-// goroutine, so two hits the client sent a window apart may reach here
-// slightly closer together. Expiring one tick early covers both, as
-// vanilla's own phase does.
+// tickDuration is one world tick. The window expires a tick early, as a
+// vanilla tick-counted window does depending on phase.
 const tickDuration = time.Second / 20
 
 // Reduce reduces the damage of a hit by what the window already absorbed.
@@ -28,10 +23,7 @@ func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 }
 
 // Arm starts a window of d for a hit of damage. A hit inside a running
-// window (a stronger one, or one a handler let through) raises the damage
-// the window remembers but does not restart it: restarting would let a
-// strong second hit shield the target from a third that an expired window
-// should have accepted.
+// window raises the remembered damage without restarting the window.
 func (a *AttackImmunity) Arm(d time.Duration, damage float64) {
 	if time.Now().Before(a.until) {
 		a.last = max(a.last, damage)
