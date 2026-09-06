@@ -94,8 +94,13 @@ type playerData struct {
 	breakingPos       cube.Pos
 	breakingFace      cube.Face
 	lastBreakDuration time.Duration
-	breakProgress     float64   // of the break time, accumulated per tick at the duration of that tick
-	breakLast         time.Time // when progress was last accumulated
+	breakProgress     float64 // of the block, credited one mining frame at a time
+	breakBlock        string  // the block the episode started on
+	// Mining frames are client input frames admitted by a wall-time budget
+	// of twenty a second with two of slack, shared by every block.
+	mineBudget float64
+	mineLast   time.Time
+	mineTick   uint64
 
 	breakCounter uint32
 
@@ -1365,6 +1370,7 @@ func (p *Player) EnderChestInventory() *inventory.Inventory {
 // with the world that it is in.
 func (p *Player) SetGameMode(mode world.GameMode) {
 	p.gameMode = mode
+	p.AbortBreaking()
 
 	if !mode.AllowsFlying() {
 		p.StopFlying()
@@ -1834,19 +1840,69 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 	}
 
 	p.breaking, p.breakingFace, p.breakProgress = true, face, 0
+	p.breakBlock, _ = p.Tx().Block(pos).EncodeBlock()
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
+		p.lastBreakDuration = 0
 		return
 	}
-	p.lastBreakDuration, p.breakLast = p.breakTime(pos), time.Now()
-	if d := p.lastBreakDuration; d > 0 {
-		// The client ran a tick of the break before its first packet.
-		p.breakProgress = float64(tickDuration) / float64(d)
-	}
+	p.lastBreakDuration = p.breakTime(pos)
+	// The frame that starts the episode is its first mining frame.
+	p.mineOnce()
 	for _, viewer := range p.viewers() {
 		viewer.ViewBlockAction(pos, block.StartCrackAction{BreakTime: p.lastBreakDuration})
 	}
+}
+
+// MineFrame admits one client input frame for mining: an active episode
+// is validated and credited a frame's work at the duration in force. Tick
+// is the client's frame counter; frames it skipped are credited as far
+// as the budget allows, which real time bounds.
+func (p *Player) MineFrame(tick uint64) {
+	frames := 1.0
+	if p.mineTick != 0 && tick > p.mineTick+1 {
+		frames = float64(tick - p.mineTick)
+	}
+	p.mineTick = tick
+	if !p.breaking || p.GameMode().CreativeInventory() {
+		return
+	}
+	if !p.canReach(p.breakingPos.Vec3Centre()) {
+		p.AbortBreaking()
+		return
+	}
+	if name, _ := p.Tx().Block(p.breakingPos).EncodeBlock(); name != p.breakBlock {
+		p.AbortBreaking()
+		return
+	}
+	for i := 0.0; i < frames; i++ {
+		if !p.mineOnce() {
+			return
+		}
+	}
+}
+
+// mineOnce credits one frame of mining to the active episode if the
+// budget admits it.
+func (p *Player) mineOnce() bool {
+	now := time.Now()
+	if !p.mineLast.IsZero() {
+		p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+float64(now.Sub(p.mineLast))/float64(tickDuration))
+	} else {
+		p.mineBudget = mineBudgetCap
+	}
+	p.mineLast = now
+	if p.mineBudget < 1 {
+		return false
+	}
+	p.mineBudget--
+	if d := p.breakTime(p.breakingPos); d <= 0 {
+		p.breakProgress = 1
+	} else {
+		p.breakProgress += float64(tickDuration) / float64(d)
+	}
+	return true
 }
 
 // breakTime returns the time needed to break a block at the position passed, taking into account the item
@@ -1881,45 +1937,31 @@ func (p *Player) breakContext() block.BreakContext {
 // FinishBreaking makes the player finish breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
 // FinishBreaking will stop the animation and break the block.
-func (p *Player) FinishBreaking() {
-	if !p.breaking {
-		p.resendNearbyBlock(p.breakingPos)
+func (p *Player) FinishBreaking() { p.FinishBreakingAt(p.breakingPos) }
+
+// FinishBreakingAt is FinishBreaking for the block the client names: a
+// finish for another block than the one being broken, or before the
+// episode earned the block's full break time, resends the block and
+// keeps what was earned; the client starts again and finishes later.
+func (p *Player) FinishBreakingAt(pos cube.Pos) {
+	if !p.breaking || pos != p.breakingPos {
+		p.resendNearbyBlock(pos)
 		return
 	}
-	// The break time is accumulated per server tick at the duration that
-	// tick had, so a tool or effect change mid-break counts as it should;
-	// a finish reported before most of it is done is a client breaking
-	// faster than its tool allows, and the block is resent.
-	if d := p.lastBreakDuration; !p.GameMode().CreativeInventory() && d > 0 {
-		p.accumulateBreak()
-		if p.breakProgress*float64(d) < float64(d-breakJitter) {
-			pos := p.breakingPos
-			p.AbortBreaking()
-			p.resendNearbyBlock(pos)
-			return
-		}
+	if !p.GameMode().CreativeInventory() && p.breakProgress < 1-1e-9 {
+		p.resendNearbyBlock(pos)
+		return
 	}
 	p.AbortBreaking()
-	p.BreakBlock(p.breakingPos)
+	p.BreakBlock(pos)
 }
 
-// breakJitter is the one tick a finish may arrive short of the break time:
-// the client and the server tick out of phase.
+// tickDuration is one client frame; mineBudgetCap is how many frames may
+// arrive at once: the current one and one of batching.
 const (
-	tickDuration = time.Second / 20
-	breakJitter  = tickDuration
+	tickDuration  = time.Second / 20
+	mineBudgetCap = 2.0
 )
-
-// accumulateBreak credits the wall time since the last credit at the
-// duration in force, so a tool or effect change counts from when it
-// happened and a lagging server tick does not shorten a break.
-func (p *Player) accumulateBreak() {
-	now := time.Now()
-	if d := p.lastBreakDuration; d > 0 {
-		p.breakProgress += float64(now.Sub(p.breakLast)) / float64(d)
-	}
-	p.breakLast = now
-}
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
@@ -1952,7 +1994,6 @@ func (p *Player) ContinueBreaking(face cube.Face) {
 		// either. Every 5 ticks seems accurate.
 		p.Tx().PlaySound(pos.Vec3(), sound.BlockBreaking{Block: b})
 	}
-	p.accumulateBreak()
 	if breakTime := p.breakTime(pos); breakTime != p.lastBreakDuration {
 		for _, viewer := range p.viewers() {
 			viewer.ViewBlockAction(pos, block.ContinueCrackAction{BreakTime: breakTime})
@@ -2197,7 +2238,8 @@ func (p *Player) teleport(pos mgl64.Vec3) {
 // Move also rotates the player, adding deltaYaw and deltaPitch to the respective values.
 func (p *Player) Move(deltaPos mgl64.Vec3, deltaYaw, deltaPitch float64) {
 	if p.Dead() || (deltaPos.ApproxEqual(mgl64.Vec3{}) && mgl64.FloatEqual(deltaYaw, 0) && mgl64.FloatEqual(deltaPitch, 0)) {
-		p.onGround = true
+		// An unchanged position is not proof of ground: the tick's own
+		// check keeps the state a hovering client would otherwise claim.
 		p.updateFallState(deltaPos.Y())
 		return
 	}

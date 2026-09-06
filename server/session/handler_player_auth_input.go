@@ -25,6 +25,7 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 			return err
 		}
 	}
+	c.MineFrame(pk.Tick)
 	return h.handleActions(pk, s, tx, c)
 }
 
@@ -187,7 +188,7 @@ func (h PlayerAuthInputHandler) handleUseItemData(data protocol.UseItemTransacti
 		if c.GameMode().CreativeInventory() {
 			c.BreakBlock(pos)
 		} else {
-			c.FinishBreaking()
+			c.FinishBreakingAt(pos)
 		}
 	default:
 		return fmt.Errorf("unhandled UseItem ActionType for PlayerAuthInput packet %v", data.ActionType)
