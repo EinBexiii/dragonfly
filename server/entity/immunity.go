@@ -22,5 +22,13 @@ func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 // Arm starts a new immunity window with the duration passed, during which damage up to the damage value
 // passed is absorbed.
 func (a *AttackImmunity) Arm(d time.Duration, damage float64) {
+	// A hit that lands inside the window (a stronger one, or one a handler
+	// let through) raises the damage the window remembers but does not
+	// restart it: restarting would let a strong second hit shield the
+	// target from a third that an expired window should have accepted.
+	if time.Now().Before(a.until) {
+		a.last = max(a.last, damage)
+		return
+	}
 	a.until, a.last = time.Now().Add(d), damage
 }
