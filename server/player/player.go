@@ -483,8 +483,8 @@ func (p *Player) fall(distance float64) {
 // respawn.
 // If the damage passed is negative, Hurt will not do anything. Hurt returns the
 // final damage dealt to the Player and if the Player was vulnerable to this
-// kind of damage; a hit inside the immunity window that only deals its excess
-// over the hit that armed it is not, so it knocks back nothing.
+// kind of damage. A hit inside the immunity window deals its excess over the
+// hit that armed it and counts as landed; KnockBack refuses it.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
@@ -564,7 +564,7 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if p.Dead() {
 		p.kill(src)
 	}
-	return totalDamage, !immune
+	return totalDamage, true
 }
 
 // applyTotemEffects is an unexported function that is used to handle totem effects.
@@ -624,7 +624,7 @@ func (p *Player) Absorption() float64 {
 // source of the velocity, typically the position of an attacking entity. The source is used to calculate the
 // direction which the entity should be knocked back in.
 func (p *Player) KnockBack(src mgl64.Vec3, force, height float64) {
-	if p.Dead() || !p.GameMode().AllowsTakingDamage() {
+	if p.Dead() || !p.GameMode().AllowsTakingDamage() || p.immunity.Absorbing() {
 		return
 	}
 	p.knockBack(src, force, height)
