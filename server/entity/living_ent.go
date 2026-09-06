@@ -191,8 +191,10 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 	}
 
 	s.Health.AddHealth(-damageLeft)
-	e.PlayAction(HurtAction{})
-	e.tx.PlaySound(e.data.Pos, sound.MobHurt{Entity: e.H().Type().EncodeEntity()})
+	if !immune {
+		e.PlayAction(HurtAction{})
+		e.tx.PlaySound(e.data.Pos, sound.MobHurt{Entity: e.H().Type().EncodeEntity()})
+	}
 
 	if src.ReducedByArmour() {
 		s.Armour.Damage(damage, e.damageItem)
@@ -213,7 +215,7 @@ func (e *LivingEnt) Hurt(damage float64, src world.DamageSource) (float64, bool)
 	if s.Health.Health() <= 0 {
 		s.dead, s.deathSrc = true, src
 	}
-	return damageLeft, true
+	return damageLeft, !immune
 }
 
 // Heal heals the entity for a given amount of health, up to its maximum health, and returns the amount of
