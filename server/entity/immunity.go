@@ -2,16 +2,24 @@ package entity
 
 import "time"
 
-// AttackImmunity keeps track of the brief invulnerability an entity has after taking damage. While a window
-// is active, damage up to the amount that armed it is absorbed entirely and only the excess of a stronger
-// hit is dealt, as in vanilla. The zero value is an AttackImmunity without an active window.
+// AttackImmunity is the invulnerability window an entity has after being
+// hurt.
 type AttackImmunity struct {
 	until time.Time
 	last  float64
 }
 
-// Reduce filters damage through the immunity window. If the window is active, the damage is reduced by the
-// amount that armed it, and immune is true. Callers deal the returned damage only if it is positive.
+// tickDuration is one world tick. A vanilla window of n ticks expires
+// somewhere between n−1 and n ticks after the hit, depending on where in
+// a tick the hit landed. Wall time is measured at processing time, after
+// the proxy's flush, the backend's flush and the wait for the world
+// goroutine, so two hits the client sent a window apart may reach here
+// slightly closer together. Expiring one tick early covers both, as
+// vanilla's own phase does.
+const tickDuration = time.Second / 20
+
+// Reduce reduces the damage of a hit by what the window already absorbed.
+// Callers deal the returned damage only if it is positive.
 func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 	if !time.Now().Before(a.until) {
 		return damage, false
@@ -19,16 +27,15 @@ func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 	return damage - a.last, true
 }
 
-// Arm starts a new immunity window with the duration passed, during which damage up to the damage value
-// passed is absorbed.
+// Arm starts a window of d for a hit of damage. A hit inside a running
+// window (a stronger one, or one a handler let through) raises the damage
+// the window remembers but does not restart it: restarting would let a
+// strong second hit shield the target from a third that an expired window
+// should have accepted.
 func (a *AttackImmunity) Arm(d time.Duration, damage float64) {
-	// A hit that lands inside the window (a stronger one, or one a handler
-	// let through) raises the damage the window remembers but does not
-	// restart it: restarting would let a strong second hit shield the
-	// target from a third that an expired window should have accepted.
 	if time.Now().Before(a.until) {
 		a.last = max(a.last, damage)
 		return
 	}
-	a.until, a.last = time.Now().Add(d), damage
+	a.until, a.last = time.Now().Add(max(0, d-tickDuration)), damage
 }
