@@ -906,6 +906,31 @@ func (w *World) removeEntityFromViewLayers(e Entity) {
 
 // entitiesWithin returns an iterator that yields all entities contained within
 // the cube.BBox passed.
+// entityHandlesWithin is entitiesWithin without opening the entities: a
+// caller ranking hundreds of candidates by type and position opens only
+// the few it keeps, which is what makes a crowd of mobs affordable.
+func (w *World) entityHandlesWithin(tx *Tx, box cube.BBox) iter.Seq[*EntityHandle] {
+	return func(yield func(*EntityHandle) bool) {
+		minPos, maxPos := chunkPosFromVec3(box.Min()), chunkPosFromVec3(box.Max())
+		for x := minPos[0]; x <= maxPos[0]; x++ {
+			for z := minPos[1]; z <= maxPos[1]; z++ {
+				c, ok := w.chunks[ChunkPos{x, z}]
+				if !ok {
+					continue
+				}
+				for _, handle := range slices.Clone(c.Entities) {
+					if handle.w != tx.World() || !box.Vec3Within(handle.data.Pos) {
+						continue
+					}
+					if !yield(handle) {
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
 func (w *World) entitiesWithin(tx *Tx, box cube.BBox) iter.Seq[Entity] {
 	return func(yield func(Entity) bool) {
 		minPos, maxPos := chunkPosFromVec3(box.Min()), chunkPosFromVec3(box.Max())

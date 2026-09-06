@@ -142,6 +142,10 @@ func (e *EntityHandle) Type() EntityType {
 // Entity attempts to convert an EntityHandle to an Entity using the Tx passed.
 // A non-nil Entity is returned only if the entity's world matches the world of
 // the Tx. If they do not match, false is returned.
+// Position is where the entity is, readable without opening it. It is only
+// meaningful on the goroutine of the world the entity is in.
+func (e *EntityHandle) Position() mgl64.Vec3 { return e.data.Pos }
+
 func (e *EntityHandle) Entity(tx *Tx) (Entity, bool) {
 	if e == nil || e.w != tx.World() {
 		return nil, false

@@ -282,6 +282,13 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 	return tx.World().entitiesWithin(tx, box)
 }
 
+// EntityHandlesWithin yields the handles of the entities within box without
+// opening them; their type and position are readable on the handle, so a
+// caller can rank many candidates and open only the ones it keeps.
+func (tx *Tx) EntityHandlesWithin(box cube.BBox) iter.Seq[*EntityHandle] {
+	return tx.World().entityHandlesWithin(tx, box)
+}
+
 // Entities returns an iterator that yields all entities in the World.
 func (tx *Tx) Entities() iter.Seq[Entity] {
 	return tx.World().allEntities(tx)
