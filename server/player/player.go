@@ -1839,6 +1839,10 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 		return
 	}
 	p.lastBreakDuration = p.breakTime(pos)
+	if d := p.lastBreakDuration; d > 0 {
+		// The client ran a tick of the break before its first packet.
+		p.breakProgress = float64(time.Second/20) / float64(d)
+	}
 	for _, viewer := range p.viewers() {
 		viewer.ViewBlockAction(pos, block.StartCrackAction{BreakTime: p.lastBreakDuration})
 	}
@@ -1885,7 +1889,7 @@ func (p *Player) FinishBreaking() {
 	// tick had, so a tool or effect change mid-break counts as it should;
 	// a finish reported before most of it is done is a client breaking
 	// faster than its tool allows, and the block is resent.
-	if !p.GameMode().CreativeInventory() && p.lastBreakDuration > 0 && p.breakProgress < breakProgressNeeded {
+	if !p.GameMode().CreativeInventory() && p.lastBreakDuration > breakInstant && p.breakProgress < breakProgressNeeded {
 		pos := p.breakingPos
 		p.AbortBreaking()
 		p.resendNearbyBlock(pos)
@@ -1896,8 +1900,13 @@ func (p *Player) FinishBreaking() {
 }
 
 // breakProgressNeeded is the share of the break time a finish must have
-// accumulated; the rest covers the client's head start and jitter.
-const breakProgressNeeded = 0.75
+// accumulated; the rest covers the client's head start and jitter. A
+// break of breakInstant or less finishes inside the client's own tick and
+// is not timed.
+const (
+	breakProgressNeeded = 0.75
+	breakInstant        = 3 * time.Second / 20
+)
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
