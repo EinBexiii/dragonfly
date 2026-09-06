@@ -295,7 +295,11 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	last, sent := s.lastVel[id]
 	s.lastVel[id] = vel
 	s.entityMutex.Unlock()
-	if sent && last.ApproxEqualThreshold(vel, moveEpsilon) {
+	// Only a repeated zero is skipped: a resting entity reports it every
+	// tick. A non-zero velocity is an impulse the client must apply even
+	// when it equals the previous one, which two players standing still and
+	// trading hits produce on every hit.
+	if sent && vel.ApproxEqualThreshold(mgl32.Vec3{}, moveEpsilon) && last.ApproxEqualThreshold(vel, moveEpsilon) {
 		return
 	}
 	s.writePacket(&packet.SetActorMotion{EntityRuntimeID: id, Velocity: vel})
