@@ -48,7 +48,7 @@ go upstream on their own; they follow those branches.
 | Branch | Fixes |
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
-| `fix/break-time-check` | A survival break is timed: progress is wall time credited at the break duration in force, one tick is credited at the start, the client's repeated start on the same block keeps it, and a finish needs the full break time less one tick or the block is resent; the item-use break paths go through it outside creative. |
+| `fix/break-time-check` | A survival break is credited one mining frame at a time: each client input frame admits one update to the active episode, admitted by a wall-time budget of twenty a second with two of slack shared by every block; a finish must name the block and have earned its whole break time, an early one resends the block and keeps the progress; the episode is bound to its block and to reach, a stop cancels, a game mode change ends it; the item-use break paths go through it outside creative; an unchanged position is not proof of ground. |
 
 ## Documentation
 
