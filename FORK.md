@@ -52,7 +52,7 @@ go upstream on their own; they follow those branches.
 
 | `fix/transfer-inventory-resync` | The inventories and the held slot are sent again on the first input after a spawn, since a client arriving by transfer discards what reached it before its own spawn completed. |
 
-| `fix/entity-handles-within` | `Tx.EntityHandlesWithin` and `EntityHandle.Position`: the entities within a box as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. |
+| `fix/entity-handles-within` | `Tx.EntityHandlesWithin`, `Tx.EntityHandles` and `EntityHandle.Position`: entities as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps and a per-tick view of the world costs one pass. |
 
 ## Documentation
 
