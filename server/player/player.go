@@ -94,7 +94,8 @@ type playerData struct {
 	breakingPos       cube.Pos
 	breakingFace      cube.Face
 	lastBreakDuration time.Duration
-	breakProgress     float64 // of the break time, accumulated per tick at the duration of that tick
+	breakProgress     float64   // of the break time, accumulated per tick at the duration of that tick
+	breakLast         time.Time // when progress was last accumulated
 
 	breakCounter uint32
 
@@ -1838,10 +1839,10 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 	if p.GameMode().CreativeInventory() {
 		return
 	}
-	p.lastBreakDuration = p.breakTime(pos)
+	p.lastBreakDuration, p.breakLast = p.breakTime(pos), time.Now()
 	if d := p.lastBreakDuration; d > 0 {
 		// The client ran a tick of the break before its first packet.
-		p.breakProgress = float64(time.Second/20) / float64(d)
+		p.breakProgress = float64(tickDuration) / float64(d)
 	}
 	for _, viewer := range p.viewers() {
 		viewer.ViewBlockAction(pos, block.StartCrackAction{BreakTime: p.lastBreakDuration})
@@ -1889,24 +1890,36 @@ func (p *Player) FinishBreaking() {
 	// tick had, so a tool or effect change mid-break counts as it should;
 	// a finish reported before most of it is done is a client breaking
 	// faster than its tool allows, and the block is resent.
-	if !p.GameMode().CreativeInventory() && p.lastBreakDuration > breakInstant && p.breakProgress < breakProgressNeeded {
-		pos := p.breakingPos
-		p.AbortBreaking()
-		p.resendNearbyBlock(pos)
-		return
+	if d := p.lastBreakDuration; !p.GameMode().CreativeInventory() && d > 0 {
+		p.accumulateBreak()
+		if p.breakProgress*float64(d) < float64(d-breakJitter) {
+			pos := p.breakingPos
+			p.AbortBreaking()
+			p.resendNearbyBlock(pos)
+			return
+		}
 	}
 	p.AbortBreaking()
 	p.BreakBlock(p.breakingPos)
 }
 
-// breakProgressNeeded is the share of the break time a finish must have
-// accumulated; the rest covers the client's head start and jitter. A
-// break of breakInstant or less finishes inside the client's own tick and
-// is not timed.
+// breakJitter is the one tick a finish may arrive short of the break time:
+// the client and the server tick out of phase.
 const (
-	breakProgressNeeded = 0.75
-	breakInstant        = 3 * time.Second / 20
+	tickDuration = time.Second / 20
+	breakJitter  = tickDuration
 )
+
+// accumulateBreak credits the wall time since the last credit at the
+// duration in force, so a tool or effect change counts from when it
+// happened and a lagging server tick does not shorten a break.
+func (p *Player) accumulateBreak() {
+	now := time.Now()
+	if d := p.lastBreakDuration; d > 0 {
+		p.breakProgress += float64(now.Sub(p.breakLast)) / float64(d)
+	}
+	p.breakLast = now
+}
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.
@@ -1939,14 +1952,12 @@ func (p *Player) ContinueBreaking(face cube.Face) {
 		// either. Every 5 ticks seems accurate.
 		p.Tx().PlaySound(pos.Vec3(), sound.BlockBreaking{Block: b})
 	}
+	p.accumulateBreak()
 	if breakTime := p.breakTime(pos); breakTime != p.lastBreakDuration {
 		for _, viewer := range p.viewers() {
 			viewer.ViewBlockAction(pos, block.ContinueCrackAction{BreakTime: breakTime})
 		}
 		p.lastBreakDuration = breakTime
-	}
-	if d := p.lastBreakDuration; d > 0 {
-		p.breakProgress += float64(time.Second/20) / float64(d)
 	}
 }
 
