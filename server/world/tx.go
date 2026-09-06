@@ -282,6 +282,19 @@ func (tx *Tx) EntitiesWithin(box cube.BBox) iter.Seq[Entity] {
 	return tx.World().entitiesWithin(tx, box)
 }
 
+// EntityHandles yields the handles of every entity in the world without
+// opening them, for building a per-tick view of who is where.
+func (tx *Tx) EntityHandles() iter.Seq[*EntityHandle] {
+	w := tx.World()
+	return func(yield func(*EntityHandle) bool) {
+		for h := range w.entities {
+			if !yield(h) {
+				return
+			}
+		}
+	}
+}
+
 // EntityHandlesWithin yields the handles of the entities within box without
 // opening them; their type and position are readable on the handle, so a
 // caller can rank many candidates and open only the ones it keeps.
