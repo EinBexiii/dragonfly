@@ -1,6 +1,7 @@
 package world
 
 import (
+	"cmp"
 	"maps"
 	"math/rand/v2"
 	"slices"
@@ -210,19 +211,26 @@ func (t ticker) anyWithinDistance(pos ChunkPos, loaded []ChunkPos, r int32) bool
 // tickEntities ticks all entities in the world, making sure they are still located in the correct chunks and
 // updating where necessary.
 func (t ticker) tickEntities(tx *Tx, tick int64) {
-	for handle, lastPos := range tx.World().entities {
+	w := tx.World()
+	budget := time.Duration(w.entityTickBudget.Load())
+	due := w.entityTickDue[:0]
+	if budget != 0 && w.entityTickOrder == nil {
+		w.entityTickOrder = make(map[*EntityHandle]uint64)
+	}
+	for handle, lastPos := range w.entities {
 		e := handle.mustEntity(tx)
 		chunkPos := chunkPosFromVec3(handle.data.Pos)
 
-		c, ok := tx.World().chunks[chunkPos]
+		c, ok := w.chunks[chunkPos]
 		if !ok {
+			delete(w.entityTickOrder, handle)
 			continue
 		}
 
 		if lastPos != chunkPos {
 			// The entity was stored using an outdated chunk position. We update it and make sure it is ready
 			// for loaders to view it.
-			tx.World().entities[handle] = chunkPos
+			w.entities[handle] = chunkPos
 			c.Entities, c.modified = append(c.Entities, handle), true
 
 			var viewers []Viewer
@@ -230,7 +238,7 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			// When changing an entity's world, then teleporting it immediately, we could end up in a situation
 			// where the old chunk of the entity was not loaded. In this case, it should be safe simply to ignore
 			// the loaders from the old chunk. We can assume they never saw the entity in the first place.
-			if old, ok := tx.World().chunks[lastPos]; ok {
+			if old, ok := w.chunks[lastPos]; ok {
 				old.Entities, old.modified = sliceutil.DeleteVal(old.Entities, handle), true
 				viewers = old.viewers
 			}
@@ -251,11 +259,64 @@ func (t ticker) tickEntities(tx *Tx, tick int64) {
 			}
 		}
 
-		if tx.World().conf.Synchronous || len(c.viewers) > 0 {
-			if te, ok := e.(TickerEntity); ok {
-				te.Tick(tx, tick)
-			}
+		if !w.conf.Synchronous && len(c.viewers) == 0 {
+			delete(w.entityTickOrder, handle)
+			continue
 		}
+		te, ok := e.(TickerEntity)
+		if !ok {
+			delete(w.entityTickOrder, handle)
+			continue
+		}
+		if budget == 0 || handle.t.EncodeEntity() == "minecraft:player" || handle.Ridden() || handle.Mount() != nil {
+			delete(w.entityTickOrder, handle)
+			te.Tick(tx, tick)
+		} else {
+			if _, queued := w.entityTickOrder[handle]; !queued {
+				w.entityTickSerial++
+				w.entityTickOrder[handle] = w.entityTickSerial
+			}
+			due = append(due, handle)
+		}
+	}
+	w.entityTickDue = due
+	defer func() {
+		clear(w.entityTickDue[:cap(w.entityTickDue)])
+		w.entityTickDue = w.entityTickDue[:0]
+	}()
+	if budget == 0 {
+		clear(w.entityTickOrder)
+		return
+	}
+	start := time.Now()
+	slices.SortFunc(due, func(a, b *EntityHandle) int {
+		return cmp.Compare(w.entityTickOrder[a], w.entityTickOrder[b])
+	})
+	ticked := false
+	for _, handle := range due {
+		if _, ok := w.entities[handle]; !ok {
+			continue
+		}
+		c, ok := w.chunks[chunkPosFromVec3(handle.data.Pos)]
+		if !ok || (!w.conf.Synchronous && len(c.viewers) == 0) {
+			delete(w.entityTickOrder, handle)
+			continue
+		}
+		// A previous callback may have mounted an entity since collection.
+		mandatory := handle.Ridden() || handle.Mount() != nil
+		if !mandatory && ticked && time.Since(start) >= budget {
+			// Keep scanning for entities that became mandatory. Pending
+			// entities retain their order without writing to their handles.
+			continue
+		}
+		if mandatory {
+			delete(w.entityTickOrder, handle)
+		} else {
+			w.entityTickSerial++
+			w.entityTickOrder[handle] = w.entityTickSerial
+			ticked = true
+		}
+		handle.mustEntity(tx).(TickerEntity).Tick(tx, tick)
 	}
 }
 

@@ -72,6 +72,13 @@ type World struct {
 	// that the Entity was in. These are tracked so that a call to RemoveEntity
 	// can find the correct Entity.
 	entities map[*EntityHandle]ChunkPos
+	// entityTickBudget is a soft limit for the optional entity pass.
+	// entityTickOrder gives pending entities a stable service order owned
+	// by this world. Serving an entity moves it behind all waiting entities.
+	entityTickBudget atomic.Int64
+	entityTickSerial uint64
+	entityTickOrder  map[*EntityHandle]uint64
+	entityTickDue    []*EntityHandle
 
 	r *rand.Rand
 
@@ -884,6 +891,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		v.HideEntity(e)
 	}
 	delete(w.entities, handle)
+	delete(w.entityTickOrder, handle)
 	handle.unsetAndLockWorld()
 	return handle
 }
@@ -902,6 +910,16 @@ func (w *World) removeEntityFromViewLayers(e Entity) {
 		}
 		v.ViewLayer().remove(e)
 	}
+}
+
+// SetEntityTickBudget sets a soft time limit for ticking non-player entities
+// without riders and not riding another entity. Zero ticks all eligible entities.
+// At least one eligible budgeted entity ticks per pass, and a running Tick cannot
+// be interrupted. Players, chunk bookkeeping and other world tick work are outside
+// this limit. Skipped entities keep their state and retain their place in line.
+// Entity simulation and movement updates slow down when ticks are skipped.
+func (w *World) SetEntityTickBudget(d time.Duration) {
+	w.entityTickBudget.Store(int64(d))
 }
 
 // entitiesWithin returns an iterator that yields all entities contained within
