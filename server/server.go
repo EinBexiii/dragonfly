@@ -637,6 +637,7 @@ func (srv *Server) parseSkin(data login.ClientData) skin.Skin {
 	playerSkin.ModelConfig, _ = skin.DecodeModelConfig(skinResourcePatch)
 	playerSkin.PlayFabID = data.PlayFabID
 	playerSkin.FullID = data.SkinID
+	parsePersona(data, &playerSkin)
 
 	playerSkin.Cape = skin.NewCape(data.CapeImageWidth, data.CapeImageHeight)
 	playerSkin.Cape.Pix, _ = base64.StdEncoding.DecodeString(data.CapeData)

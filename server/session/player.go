@@ -1137,6 +1137,22 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 	s.Model = sk.SkinGeometry
 	s.PlayFabID = sk.PlayFabID
 	s.FullID = sk.FullID
+	if s.FullID == "" {
+		// Clients commonly omit FullID in live updates. Login already uses
+		// SkinID for it; use the same stable value on this path.
+		s.FullID = sk.SkinID
+	}
+	s.PersonaPieces = sk.PersonaPieces
+	s.PieceTintColours = sk.PieceTintColours
+	s.ArmSize = sk.ArmSize
+	s.SkinColour = sk.SkinColour
+	s.CapeID = sk.CapeID
+	s.Premium = sk.PremiumSkin
+	s.PersonaCapeOnClassicSkin = sk.PersonaCapeOnClassicSkin
+	s.PrimaryUser = sk.PrimaryUser
+	s.ProfileHash = sk.ProfileHash
+	s.GeometryDataEngineVersion = sk.GeometryDataEngineVersion
+	s.AnimationData = sk.AnimationData
 
 	s.Cape = skin.NewCape(int(sk.CapeImageWidth), int(sk.CapeImageHeight))
 	s.Cape.Pix = sk.CapeData
