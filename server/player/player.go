@@ -1841,9 +1841,12 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 
 	p.breaking, p.breakingFace, p.breakProgress = true, face, 0
 	p.breakBlock, _ = p.Tx().Block(pos).EncodeBlock()
-	// The budget starts with the episode: what real time elapses during it
-	// is the block's, what elapsed before is not.
-	p.mineBudget, p.mineLast = mineBudgetStart, time.Now()
+	// A new episode does not refill the budget, or a client naming a new
+	// block for every break would earn its frames for free. It only takes
+	// what real time has passed, and may not carry a whole episode's bank
+	// into the next block.
+	p.mineAccrue()
+	p.mineBudget = math.Min(p.mineBudget, mineBudgetStart)
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
@@ -1891,18 +1894,24 @@ func (p *Player) MineFrame(tick uint64) {
 // and are all admitted, since their time did pass, while a client
 // sending frames faster than time passes is held to it.
 func (p *Player) mineAdmit() bool {
-	now := time.Now()
-	if !p.mineLast.IsZero() {
-		p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+float64(now.Sub(p.mineLast))/float64(tickDuration))
-	} else {
-		p.mineBudget = mineBudgetStart
-	}
-	p.mineLast = now
+	p.mineAccrue()
 	if p.mineBudget < 1 {
 		return false
 	}
 	p.mineBudget--
 	return true
+}
+
+// mineAccrue adds the frames real time has passed since the budget was last
+// touched, up to the cap.
+func (p *Player) mineAccrue() {
+	now := time.Now()
+	if p.mineLast.IsZero() {
+		p.mineBudget, p.mineLast = mineBudgetStart, now
+		return
+	}
+	p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+float64(now.Sub(p.mineLast))/float64(tickDuration))
+	p.mineLast = now
 }
 
 // mineOnce credits one frame of mining to the active episode if the
@@ -1965,6 +1974,7 @@ func (p *Player) FinishBreakingAt(pos cube.Pos) {
 		if !p.breaking && !p.GameMode().CreativeInventory() && p.canReach(pos.Vec3Centre()) && p.breakTime(pos) <= 0 {
 			// Outside an episode nothing banks: a burst of instant breaks
 			// after a pause is a flood, not delayed work.
+			p.mineAccrue()
 			p.mineBudget = math.Min(p.mineBudget, mineBudgetStart)
 			if p.mineAdmit() {
 				p.BreakBlock(pos)
@@ -1989,10 +1999,10 @@ func (p *Player) FinishBreakingAt(pos cube.Pos) {
 	p.BreakBlock(pos)
 }
 
-// tickDuration is one client frame. mineBudgetStart is what a fresh
-// episode may spend at once, the current frame and one of batching;
-// mineBudgetCap is how much real time an episode may bank while inputs
-// are delayed on their way.
+// tickDuration is one client frame. mineBudgetStart is what a break may
+// spend at once, the current frame and one of batching, and is all a new
+// episode may carry in; mineBudgetCap is how much real time an episode
+// already underway may bank while its inputs are delayed on their way.
 const (
 	tickDuration    = time.Second / 20
 	mineBudgetStart = 2.0
