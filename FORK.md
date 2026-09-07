@@ -11,6 +11,24 @@ whenever it changes; a branch that is not on the list is not in `next`.
 `upstream/master` is at the version named by the most recent `dragonfly:
 Updated to ...` commit below the merges.
 
+## Rebuild tooling
+
+Maintain [mknext.sh](tools/fork/mknext.sh), its [resolver](tools/fork/resolve.py),
+and the [fork maintainer agent](.claude/agents/fork-maintainer.md) on `docs/fork`.
+
+Run `sh tools/fork/mknext.sh` from a clean `docs/fork` worktree to rebuild that
+checkout, or `sh tools/fork/mknext.sh /path/to/fork-checkout` to rebuild a
+separate clean checkout. The target needs `upstream/master` and every branch
+in the script as local refs; the tool does not fetch or push. It refuses a
+dirty target or missing refs before replacing `next`. The resolver is copied
+to temporary storage because checking out upstream removes these tools until
+`docs/fork` is merged again. The shell loads the rebuild function first.
+
+A rebuild replaces `next` and replays the full list onto `upstream/master`.
+Inspect the target checkout and branch topology before using it. To land one
+constituent branch, maintain the script's list on `docs/fork` and merge that
+branch into `next`; a full rebuild is a separate operation.
+
 ## Features
 
 | Branch | Adds |
@@ -64,4 +82,4 @@ Independent of the fork's features, candidates for upstream pull requests.
 
 | Branch | Adds |
 |---|---|
-| `docs/fork` | This file. |
+| `docs/fork` | This file, the rebuild tools, and the fork maintainer agent. |
