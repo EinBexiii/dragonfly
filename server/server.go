@@ -644,6 +644,8 @@ func (srv *Server) parseSkin(data login.ClientData) skin.Skin {
 	for _, animation := range data.AnimatedImageData {
 		var t skin.AnimationType
 		switch animation.Type {
+		case 0:
+			t = skin.AnimationNone
 		case protocol.SkinAnimationHead:
 			t = skin.AnimationHead
 		case protocol.SkinAnimationBody32x32:

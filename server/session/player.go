@@ -1131,6 +1131,20 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 		return skin.Skin{}, fmt.Errorf("SkinID must not be an empty string")
 	}
 
+	// Validate before constructors allocate from client-supplied dimensions.
+	// The wire codec checks these too, but its uint32 products can overflow.
+	if !skinImageLengthMatches(sk.SkinData, sk.SkinImageWidth, sk.SkinImageHeight) {
+		return skin.Skin{}, fmt.Errorf("SkinData length does not match dimensions")
+	}
+	if !skinImageLengthMatches(sk.CapeData, sk.CapeImageWidth, sk.CapeImageHeight) {
+		return skin.Skin{}, fmt.Errorf("CapeData length does not match dimensions")
+	}
+	for _, anim := range sk.Animations {
+		if !skinImageLengthMatches(anim.ImageData, anim.ImageWidth, anim.ImageHeight) {
+			return skin.Skin{}, fmt.Errorf("animation image length does not match dimensions")
+		}
+	}
+
 	s = skin.New(int(sk.SkinImageWidth), int(sk.SkinImageHeight))
 	s.Persona = sk.PersonaSkin
 	s.Pix = sk.SkinData
@@ -1142,8 +1156,12 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 	s.Cape.Pix = sk.CapeData
 
 	m := make(map[string]any)
-	if err = json.Unmarshal(sk.SkinGeometry, &m); err != nil {
-		return skin.Skin{}, fmt.Errorf("SkinGeometry was not a valid JSON string: %v", err)
+	// Built-in geometry is named by the resource patch without a custom model.
+	// Login permits empty geometry as well.
+	if len(sk.SkinGeometry) != 0 {
+		if err = json.Unmarshal(sk.SkinGeometry, &m); err != nil {
+			return skin.Skin{}, fmt.Errorf("SkinGeometry was not a valid JSON string: %v", err)
+		}
 	}
 
 	if s.ModelConfig, err = skin.DecodeModelConfig(sk.SkinResourcePatch); err != nil {
@@ -1153,6 +1171,8 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 	for _, anim := range sk.Animations {
 		var t skin.AnimationType
 		switch anim.AnimationType {
+		case 0: // None, also accepted by login.ClientData.Validate.
+			t = skin.AnimationNone
 		case protocol.SkinAnimationHead:
 			t = skin.AnimationHead
 		case protocol.SkinAnimationBody32x32:
@@ -1170,6 +1190,12 @@ func protocolToSkin(sk protocol.Skin) (s skin.Skin, err error) {
 		s.Animations = append(s.Animations, animation)
 	}
 	return
+}
+
+// skinImageLengthMatches compares RGBA pixel counts without overflowing a
+// width*height*4 product. Zero dimensions are valid only with empty data.
+func skinImageLengthMatches(data []byte, width, height uint32) bool {
+	return len(data)%4 == 0 && uint64(len(data)/4) == uint64(width)*uint64(height)
 }
 
 // shapeAttachedEntityRuntimeID returns the runtime ID of the entity attached to a debug shape.

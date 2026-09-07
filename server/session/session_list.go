@@ -115,6 +115,8 @@ func skinToProtocol(s skin.Skin) protocol.Skin {
 			FrameCount:  float32(animation.FrameCount),
 		}
 		switch animation.Type() {
+		case skin.AnimationNone:
+			protocolAnim.AnimationType = 0
 		case skin.AnimationHead:
 			protocolAnim.AnimationType = protocol.SkinAnimationHead
 		case skin.AnimationBody32x32:
