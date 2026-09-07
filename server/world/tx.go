@@ -295,6 +295,16 @@ func (tx *Tx) EntityHandles() iter.Seq[*EntityHandle] {
 	}
 }
 
+// EntityPosition is where the entity behind the handle is, readable without
+// opening it. It reports false for an entity not in this transaction's
+// world, whose position belongs to another goroutine.
+func (tx *Tx) EntityPosition(h *EntityHandle) (mgl64.Vec3, bool) {
+	if _, ok := tx.World().entities[h]; !ok {
+		return mgl64.Vec3{}, false
+	}
+	return h.data.Pos, true
+}
+
 // EntityHandlesWithin yields the handles of the entities within box without
 // opening them; their type and position are readable on the handle, so a
 // caller can rank many candidates and open only the ones it keeps.

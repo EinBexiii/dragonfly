@@ -919,7 +919,9 @@ func (w *World) entityHandlesWithin(tx *Tx, box cube.BBox) iter.Seq[*EntityHandl
 					continue
 				}
 				for _, handle := range slices.Clone(c.Entities) {
-					if handle.w != tx.World() || !box.Vec3Within(handle.data.Pos) {
+					// A callback on an earlier handle may have moved this one
+					// to another world, whose goroutine now owns its data.
+					if _, here := w.entities[handle]; !here || !box.Vec3Within(handle.data.Pos) {
 						continue
 					}
 					if !yield(handle) {
