@@ -48,7 +48,7 @@ go upstream on their own; they follow those branches.
 | Branch | Fixes |
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
-| `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that starts with the episode and banks the real time passing during it (delayed inputs are all credited, a flood is held to real time); a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
+| `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that only takes the frames real time has passed, that a new block may carry at most two of (naming another block earns nothing), and that an episode already underway may bank so delayed inputs are all credited; a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
 
 ## Additions not yet sent upstream
 
