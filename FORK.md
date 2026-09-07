@@ -58,7 +58,6 @@ Independent of the fork's features, candidates for upstream pull requests.
 |---|---|
 | `fix/transfer-inventory-resync` | The inventories and the held slot are sent again on the first input after a spawn, since a client arriving by transfer discards what reached it before its own spawn completed. |
 | `fix/entity-handles-within` | `Tx.EntityHandlesWithin`, `Tx.EntityHandles` and `Tx.EntityPosition`: entities as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. A handle's position is read through its world's transaction, which reports false for a handle that world no longer holds. |
-| `perf/entity-tick-budget` | `World.SetEntityTickBudget`: a soft bound on the time a tick spends on entities other than players and occupied rides, served in a world-owned order with the ones not reached keeping their place, so a crowd of mobs slows itself rather than the players' packets behind the tick. Void and suffocation checks key on the entity's age. Off by default. |
 
 ## Documentation
 
