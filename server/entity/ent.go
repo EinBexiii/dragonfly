@@ -40,6 +40,14 @@ func (e *Ent) H() *world.EntityHandle {
 
 // Behaviour returns the Behaviour of the entity, stored in the entity data of its handle. Nil is returned
 // if the entity data holds no Behaviour.
+// ThrottleMovement reports whether a viewer far from this entity may be told
+// about its movement later rather than every tick, which its Behaviour
+// decides. An entity whose behaviour does not say is never held back.
+func (e *Ent) ThrottleMovement() bool {
+	t, ok := e.Behaviour().(MovementThrottler)
+	return ok && t.ThrottleMovement()
+}
+
 func (e *Ent) Behaviour() Behaviour {
 	b, _ := e.data.Data.(Behaviour)
 	return b

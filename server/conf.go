@@ -15,6 +15,7 @@ import (
 	"github.com/df-mc/dragonfly/server/player"
 	"github.com/df-mc/dragonfly/server/player/chat"
 	"github.com/df-mc/dragonfly/server/player/playerdb"
+	"github.com/df-mc/dragonfly/server/session"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/biome"
 	"github.com/df-mc/dragonfly/server/world/generator"
@@ -65,6 +66,10 @@ type Config struct {
 	// MaxPlayers is the maximum amount of players allowed to join the server at
 	// once.
 	MaxPlayers int
+	// MovementBroadcast spreads distant entities' movement over several ticks
+	// instead of sending every entity's movement to every player each tick.
+	// Disabled by default; see session.MovementBroadcastConfig.
+	MovementBroadcast session.MovementBroadcastConfig
 	// MaxChunkRadius is the maximum view distance that each player may have,
 	// measured in chunks. A chunk radius generally leads to more memory usage.
 	MaxChunkRadius int

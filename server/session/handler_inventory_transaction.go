@@ -166,6 +166,10 @@ func (h *InventoryTransactionHandler) handleUseItemOnEntityTransaction(data *pro
 	default:
 		return fmt.Errorf("unhandled UseItemOnEntity ActionType %v", data.ActionType)
 	}
+	if valid {
+		// What a player is fighting is shown to them every tick.
+		s.PinEntityMovement(tx, handle, s.conf.MovementBroadcast.normalized().CombatTicks)
+	}
 	if !valid {
 		slot := int(*s.heldSlot)
 		it, _ := s.inv.Item(slot)

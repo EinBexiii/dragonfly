@@ -60,8 +60,11 @@ type Session struct {
 	entityRuntimeIDs map[*world.EntityHandle]uint64
 	// lastMove and lastVel hold what was last sent for each Entity, so that
 	// neither is sent again unchanged.
-	lastMove       map[uint64]movement
-	lastVel        map[uint64]mgl32.Vec3
+	lastMove map[uint64]movement
+	lastVel  map[uint64]mgl32.Vec3
+	// movements holds the movement of entities whose updates are spread out
+	// by distance, when MovementBroadcast is enabled.
+	movements      map[*world.EntityHandle]*movementTrack
 	entities       map[uint64]*world.EntityHandle
 	hiddenEntities map[uuid.UUID]struct{}
 
@@ -175,6 +178,9 @@ var errSelfRuntimeID = errors.New("invalid entity runtime ID: runtime ID for sel
 
 type Config struct {
 	Log *slog.Logger
+	// MovementBroadcast spreads distant entities' movement over several ticks
+	// rather than sending every entity's every tick. Disabled by default.
+	MovementBroadcast MovementBroadcastConfig
 
 	MaxChunkRadius int
 
@@ -208,6 +214,7 @@ func (conf Config) New(conn Conn) *Session {
 		handlers:               map[uint32]packetHandler{},
 		packets:                make(chan packet.Packet, 256),
 		entityRuntimeIDs:       map[*world.EntityHandle]uint64{},
+		movements:              map[*world.EntityHandle]*movementTrack{},
 		lastMove:               map[uint64]movement{},
 		lastVel:                map[uint64]mgl32.Vec3{},
 		entities:               map[uint64]*world.EntityHandle{},
@@ -357,6 +364,7 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 	// entity runtime IDs.
 	sessions.Remove(s, c)
 	s.entityMutex.Lock()
+	clear(s.movements)
 	clear(s.entityRuntimeIDs)
 	clear(s.lastMove)
 	clear(s.lastVel)
