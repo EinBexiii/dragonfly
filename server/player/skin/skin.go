@@ -3,6 +3,8 @@ package skin
 import (
 	"image"
 	"image/color"
+
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // Skin holds the data of a skin that a player has equipped. It includes geometry data, the texture and the
@@ -14,6 +16,19 @@ type Skin struct {
 	Persona   bool
 	PlayFabID string
 	FullID    string
+	// PersonaPieces and PieceTintColours describe the equipped Dressing Room
+	// character. Persona alone is insufficient to reconstruct its appearance.
+	PersonaPieces             []protocol.PersonaPiece
+	PieceTintColours          []protocol.PersonaPieceTintColour
+	ArmSize                   uint8
+	SkinColour                color.RGBA
+	CapeID                    string
+	Premium                   bool
+	PersonaCapeOnClassicSkin  bool
+	PrimaryUser               bool
+	ProfileHash               string
+	GeometryDataEngineVersion []byte
+	AnimationData             []byte
 
 	// Pix holds the raw pixel data of the skin. This is an RGBA byte slice, meaning that every first byte is
 	// a Red value, the second a Green value, the third a Blue value and the fourth an Alpha value.
