@@ -575,6 +575,8 @@ func (srv *Server) createPlayer(id uuid.UUID, conn session.Conn, conf player.Con
 		QuitMessage:    srv.conf.QuitMessage,
 		HandleStop:     srv.handleSessionClose,
 		BlockRegistry:  w.BlockRegistry(),
+
+		MovementBroadcast: srv.conf.MovementBroadcast,
 	}.New(conn)
 
 	conf.Name = conn.IdentityData().DisplayName
