@@ -457,11 +457,11 @@ func (e *LivingEnt) Tick(tx *world.Tx, current int64) {
 		}
 		return
 	}
-	if e.data.Pos[1] < float64(tx.Range()[0]) && current%10 == 0 {
+	if e.data.Pos[1] < float64(tx.Range()[0]) && (e.Age()/(time.Second/20))%10 == 0 {
 		e.Hurt(4, VoidDamageSource{})
 	}
 	TickOnFire(e, tx)
-	if current%10 == 0 && InsideOfSolid(e, tx) {
+	if (e.Age()/(time.Second/20))%10 == 0 && InsideOfSolid(e, tx) {
 		e.Hurt(1, SuffocationDamageSource{})
 	}
 
