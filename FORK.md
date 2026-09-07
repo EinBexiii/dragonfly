@@ -59,6 +59,7 @@ Independent of the fork's features, candidates for upstream pull requests.
 | `fix/transfer-inventory-resync` | The inventories and the held slot are sent again on the first input after a spawn, since a client arriving by transfer discards what reached it before its own spawn completed. |
 | `fix/entity-handles-within` | `Tx.EntityHandlesWithin`, `Tx.EntityHandles` and `Tx.EntityPosition`: entities as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. A handle's position is read through its world's transaction, which reports false for a handle that world no longer holds. |
 | `feature/entity-view` | `Tx.EntityHandlesOf`: the World's entity handles grouped by identifier, rebuilt only when an entity is added or removed, so a crowd of mobs looking for the few players costs the players rather than the crowd. |
+| `perf/entity-movement-relevance` | `session.MovementBroadcastConfig`: a viewer takes an entity's movement whole (`world.MovementViewer`) and sends distant entities' movement every second, fourth or tenth tick instead of every tick, keeping the newest state rather than dropping ticks. Players, rides, combat targets, fast or airborne motion and anything not opting in through `entity.MovementThrottler` are unaffected. Off by default. |
 
 ## Documentation
 
