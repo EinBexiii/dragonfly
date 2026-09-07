@@ -25,7 +25,6 @@ type Movement struct {
 	pos, vel, dpos, dvel mgl64.Vec3
 	rot, drot            cube.Rotation
 	onGround             bool
-	tx                   *world.Tx
 }
 
 // NewMovement creates a Movement that moves an Ent to the position, velocity and rotation passed, updating the
@@ -34,7 +33,7 @@ type Movement struct {
 func NewMovement(e *Ent, pos, vel mgl64.Vec3, rot cube.Rotation, onGround bool) *Movement {
 	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
 	e.data.Pos, e.data.Vel, e.data.Rot = pos, vel, rot
-	return &Movement{v: e.tx.Viewers(prevPos), e: e, tx: e.tx,
+	return &Movement{v: e.tx.Viewers(prevPos), e: e,
 		pos: pos, vel: vel, dpos: pos.Sub(prevPos), dvel: vel.Sub(prevVel),
 		rot: rot, drot: cube.Rotation{rot[0] - prevRot[0], rot[1] - prevRot[1]},
 		onGround: onGround,
@@ -60,24 +59,7 @@ func (m *Movement) Send() {
 		vel[1] = 0
 	}
 
-	// A viewer that schedules movement itself is offered the whole tick, so
-	// it can hold a distant entity's back and still know its last position.
-	var update world.EntityMovementUpdate
-	var built bool
 	for _, v := range m.v {
-		if mv, ok := v.(world.MovementViewer); ok && m.tx != nil {
-			if !built {
-				update = world.EntityMovementUpdate{
-					Tick: m.tx.CurrentTick(), Position: m.pos, Velocity: vel, Rotation: m.rot,
-					OnGround: m.onGround, DeltaPosition: m.dpos, DeltaVelocity: m.dvel,
-					PositionChanged: posChanged, RotationChanged: rotChanged,
-					VelocityChanged: velChanged, Driven: driven,
-				}
-				built = true
-			}
-			mv.ViewEntityMovementUpdate(m.tx, m.e, update)
-			continue
-		}
 		if posChanged || rotChanged || driven {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
@@ -85,13 +67,6 @@ func (m *Movement) Send() {
 			v.ViewEntityVelocity(m.e, vel)
 		}
 	}
-}
-
-// MovementThrottler is a Behaviour that says whether a viewer far from this
-// entity may be told about its movement later rather than every tick. An
-// entity without it is always told about at once.
-type MovementThrottler interface {
-	ThrottleMovement() bool
 }
 
 // restingFall is the greatest fall an Entity standing on a block can have: the
@@ -124,7 +99,7 @@ func (c *MovementComputer) TickMovement(e world.Entity, pos, vel mgl64.Vec3, rot
 	vel = c.applyHorizontalForces(tx, pos, c.applyVerticalForces(vel))
 	dPos, vel := c.CheckCollision(tx, e, pos, vel)
 
-	return &Movement{v: viewers, e: e, tx: tx,
+	return &Movement{v: viewers, e: e,
 		pos: pos.Add(dPos), vel: vel, dpos: dPos, dvel: vel.Sub(velBefore),
 		rot: rot, onGround: c.onGround,
 	}

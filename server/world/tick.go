@@ -102,13 +102,6 @@ func (t ticker) tick(tx *Tx) {
 	t.tickBlocksRandomly(tx, loaders, tick)
 	t.performNeighbourUpdates(tx)
 	w.redstone.tick(tx, tick)
-	// A viewer holding movement back is told the tick has ended, so what it
-	// held reaches it even once the entity stops moving.
-	for _, viewer := range viewers {
-		if mv, ok := viewer.(MovementViewer); ok {
-			mv.FlushEntityMovements(tx)
-		}
-	}
 }
 
 // performNeighbourUpdates performs all block updates that came as a result of a neighbouring block being changed.

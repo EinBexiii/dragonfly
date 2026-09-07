@@ -190,7 +190,6 @@ func (s *Session) HideEntity(e world.Entity) {
 	}
 	delete(s.lastMove, id)
 	delete(s.lastVel, id)
-	delete(s.movements, e.H())
 	s.entityMutex.Unlock()
 	if !ok {
 		// The entity was already removed some other way. We don't need to send a packet.
@@ -213,7 +212,6 @@ func (s *Session) ViewEntityDisplacement(e world.Entity, pos mgl64.Vec3, rot cub
 	if s.entityHidden(e) {
 		return
 	}
-	s.clearTrack(e.H())
 	id := s.entityRuntimeID(e)
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, true)
 }
@@ -355,8 +353,6 @@ func (s *Session) ViewEntityTeleport(e world.Entity, position mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
 	}
-	// A position held back is older than where the entity now is.
-	s.clearTrack(e.H())
 
 	yaw, pitch := e.Rotation().Elem()
 	if id == selfEntityRuntimeID {
