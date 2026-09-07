@@ -211,7 +211,7 @@ func (e *Ent) Tick(tx *world.Tx, current int64) {
 	}()
 
 	y := e.data.Pos[1]
-	if y < float64(tx.Range()[0]) && (e.Age()/(time.Second/20))%10 == 0 {
+	if y < float64(tx.Range()[0]) && current%10 == 0 {
 		// Living entities are hurt by the void in LivingEnt.Tick instead of vanishing silently.
 		if _, living := e.Behaviour().(LivingBehaviour); !living {
 			_ = e.Close()
