@@ -1841,6 +1841,9 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 
 	p.breaking, p.breakingFace, p.breakProgress = true, face, 0
 	p.breakBlock, _ = p.Tx().Block(pos).EncodeBlock()
+	// The budget starts with the episode: what real time elapses during it
+	// is the block's, what elapsed before is not.
+	p.mineBudget, p.mineLast = mineBudgetStart, time.Now()
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
@@ -1883,20 +1886,31 @@ func (p *Player) MineFrame(tick uint64) {
 	}
 }
 
-// mineOnce credits one frame of mining to the active episode if the
-// budget admits it.
-func (p *Player) mineOnce() bool {
+// mineAdmit spends one mining frame from the budget, which accrues one
+// frame per frame of real time: inputs a stall delayed arrive together
+// and are all admitted, since their time did pass, while a client
+// sending frames faster than time passes is held to it.
+func (p *Player) mineAdmit() bool {
 	now := time.Now()
 	if !p.mineLast.IsZero() {
 		p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+float64(now.Sub(p.mineLast))/float64(tickDuration))
 	} else {
-		p.mineBudget = mineBudgetCap
+		p.mineBudget = mineBudgetStart
 	}
 	p.mineLast = now
 	if p.mineBudget < 1 {
 		return false
 	}
 	p.mineBudget--
+	return true
+}
+
+// mineOnce credits one frame of mining to the active episode if the
+// budget admits it.
+func (p *Player) mineOnce() bool {
+	if !p.mineAdmit() {
+		return false
+	}
 	if d := p.breakTime(p.breakingPos); d <= 0 {
 		p.breakProgress = 1
 	} else {
@@ -1945,22 +1959,44 @@ func (p *Player) FinishBreaking() { p.FinishBreakingAt(p.breakingPos) }
 // keeps what was earned; the client starts again and finishes later.
 func (p *Player) FinishBreakingAt(pos cube.Pos) {
 	if !p.breaking || pos != p.breakingPos {
+		// A block the held tool breaks within a frame needs no episode:
+		// the client sends its start and finish together. It still spends
+		// a mining frame, so a flood of them is held to real time.
+		if !p.breaking && !p.GameMode().CreativeInventory() && p.canReach(pos.Vec3Centre()) && p.breakTime(pos) <= 0 {
+			// Outside an episode nothing banks: a burst of instant breaks
+			// after a pause is a flood, not delayed work.
+			p.mineBudget = math.Min(p.mineBudget, mineBudgetStart)
+			if p.mineAdmit() {
+				p.BreakBlock(pos)
+				return
+			}
+		}
 		p.resendNearbyBlock(pos)
 		return
 	}
-	if !p.GameMode().CreativeInventory() && p.breakProgress < 1-1e-9 {
-		p.resendNearbyBlock(pos)
-		return
+	if !p.GameMode().CreativeInventory() {
+		// The progress belongs to the block the episode started on, in
+		// reach: another block put there since is not broken with it.
+		if name, _ := p.Tx().Block(pos).EncodeBlock(); name != p.breakBlock || !p.canReach(pos.Vec3Centre()) || p.breakProgress < 1-1e-9 {
+			if name != p.breakBlock {
+				p.AbortBreaking()
+			}
+			p.resendNearbyBlock(pos)
+			return
+		}
 	}
 	p.AbortBreaking()
 	p.BreakBlock(pos)
 }
 
-// tickDuration is one client frame; mineBudgetCap is how many frames may
-// arrive at once: the current one and one of batching.
+// tickDuration is one client frame. mineBudgetStart is what a fresh
+// episode may spend at once, the current frame and one of batching;
+// mineBudgetCap is how much real time an episode may bank while inputs
+// are delayed on their way.
 const (
-	tickDuration  = time.Second / 20
-	mineBudgetCap = 2.0
+	tickDuration    = time.Second / 20
+	mineBudgetStart = 2.0
+	mineBudgetCap   = 40.0
 )
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
