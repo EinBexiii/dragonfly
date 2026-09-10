@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
@@ -170,13 +171,23 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
 // what blocks need to have their BBox returned.
+// searchRange is the block range whose boxes may collide with box: a
+// quarter block around it, and below it as far as a block's box may reach
+// upward, since a fence or a wall in the block below the lowest one still
+// stands into it. The maximum bounds are exclusive: a block starting
+// exactly at the box's maximum cannot collide with it.
+func searchRange(box cube.BBox) (low, high cube.Pos) {
+	grown := box.Grow(0.25).Extend(mgl64.Vec3{0, 1 - model.BarrierHeight, 0})
+	lo, hi := grown.Min(), grown.Max()
+	low = cube.Pos{int(math.Floor(lo[0])), int(math.Floor(lo[1])), int(math.Floor(lo[2]))}
+	high = cube.Pos{int(math.Ceil(hi[0])), int(math.Ceil(hi[1])), int(math.Ceil(hi[2]))}
+	return low, high
+}
+
 func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
-	grown := box.Grow(0.25)
-	min, max := grown.Min(), grown.Max()
-	minX, minY, minZ := int(math.Floor(min[0])), int(math.Floor(min[1])), int(math.Floor(min[2]))
-	// The maximum bounds are exclusive: A block starting exactly at the box's
-	// maximum cannot collide with it.
-	maxX, maxY, maxZ := int(math.Ceil(max[0])), int(math.Ceil(max[1])), int(math.Ceil(max[2]))
+	low, high := searchRange(box)
+	minX, minY, minZ := low[0], low[1], low[2]
+	maxX, maxY, maxZ := high[0], high[1], high[2]
 
 	// A prediction of one BBox per block, plus an additional 2, in case. Allocate
 	// it lazily so that entities moving through air do not allocate an empty slice

@@ -19,30 +19,34 @@ type Wall struct {
 	Post bool
 }
 
-// wallCollisionHeight is how tall a wall is to an entity: like a fence, a
-// wall cannot be jumped over, so its collision box reaches a block and a
-// half whatever its post and connections look like. A player standing on a
-// wall stands at that height; a shorter box has the server see them float.
-const wallCollisionHeight = 1.5
+const (
+	// wallPostInset is the post's edge from the block's edge.
+	wallPostInset = 0.25
+	// wallArmInset is an arm's edge from the block's edge, across the arm.
+	wallArmInset = 0.3125
+)
 
-// BBox returns the wall's collision boxes. The post and connection heights
-// describe the shape the client draws; the boxes an entity collides with
-// are all wallCollisionHeight tall.
+// BBox returns the wall's collision box, one box the way the Bedrock server
+// computes it, BarrierHeight tall whatever the post and connection heights
+// say about the drawn shape: a straight run without a post is as narrow as
+// its arms, anything else is the post grown along each arm.
 func (w Wall) BBox(cube.Pos, world.BlockSource) []cube.BBox {
-	boxes := []cube.BBox{cube.Box(0.25, 0, 0.25, 0.75, wallCollisionHeight, 0.75)}
-	if w.NorthConnection > 0 {
-		boxes = append(boxes, cube.Box(0.25, 0, 0, 0.75, wallCollisionHeight, 0.25))
+	north, east, south, west := w.NorthConnection > 0, w.EastConnection > 0, w.SouthConnection > 0, w.WestConnection > 0
+	if !w.Post {
+		switch {
+		case north && south && !east && !west:
+			return []cube.BBox{cube.Box(wallArmInset, 0, 0, 1-wallArmInset, BarrierHeight, 1)}
+		case east && west && !north && !south:
+			return []cube.BBox{cube.Box(0, 0, wallArmInset, 1, BarrierHeight, 1-wallArmInset)}
+		}
 	}
-	if w.EastConnection > 0 {
-		boxes = append(boxes, cube.Box(0.75, 0, 0.25, 1, wallCollisionHeight, 0.75))
+	box := cube.Box(wallPostInset, 0, wallPostInset, 1-wallPostInset, BarrierHeight, 1-wallPostInset)
+	for face, connected := range map[cube.Face]bool{cube.FaceNorth: north, cube.FaceEast: east, cube.FaceSouth: south, cube.FaceWest: west} {
+		if connected {
+			box = box.ExtendTowards(face, wallPostInset)
+		}
 	}
-	if w.SouthConnection > 0 {
-		boxes = append(boxes, cube.Box(0.25, 0, 0.75, 0.75, wallCollisionHeight, 1))
-	}
-	if w.WestConnection > 0 {
-		boxes = append(boxes, cube.Box(0, 0, 0.25, 0.25, wallCollisionHeight, 0.75))
-	}
-	return boxes
+	return []cube.BBox{box}
 }
 
 // FaceSolid returns true if the face is in the Y axis.
