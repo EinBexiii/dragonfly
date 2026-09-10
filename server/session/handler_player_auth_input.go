@@ -26,7 +26,7 @@ func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx
 		// waits for that close and asks to open nothing until it comes. A
 		// server-side close of the inventory window is that answer, and a
 		// client with nothing open ignores it.
-		s.writePacket(&packet.ContainerClose{WindowID: protocol.WindowIDInventory, ServerSide: true})
+		s.writePacket(&packet.ContainerClose{WindowID: protocol.WindowIDInventory, ContainerType: byte(protocol.ContainerTypeInventory & 0xff), ServerSide: true})
 	}
 	// A riding player is carried by its mount, so its own reported position is
 	// not what moves it.
