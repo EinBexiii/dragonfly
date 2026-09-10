@@ -12,7 +12,7 @@ if [ -n "$(git -C "$repo" status --porcelain)" ]; then
   echo "refusing to rebuild a checkout with existing work: $repo" >&2
   exit 1
 fi
-branches='pr/entity-bugfixes pr/ui-facade feature/push-out-of-blocks feature/death-animation feature/integration feature/entity-target feature/tack-items feature/entity-trading fix/chunk-callback-reentrancy fix/loader-viewer-reentrancy fix/loader-change-world fix/entity-chunk-unload-leak fix/unsaved-chunk-duplication fix/nil-block-entity-nbt fix/spectator-game-mode perf/chunk-height-maps fix/immunity-excess-knockback fix/break-time-check fix/transfer-inventory-resync fix/persona-skin-data fix/live-skin-decoder-hardening fix/entity-handles-within feature/entity-view docs/fork'
+branches='pr/entity-bugfixes pr/ui-facade feature/push-out-of-blocks feature/death-animation feature/integration feature/entity-target feature/tack-items feature/entity-trading fix/chunk-callback-reentrancy fix/loader-viewer-reentrancy fix/loader-change-world fix/entity-chunk-unload-leak fix/unsaved-chunk-duplication fix/nil-block-entity-nbt fix/spectator-game-mode perf/chunk-height-maps fix/immunity-excess-knockback fix/break-time-check fix/transfer-inventory-resync fix/persona-skin-data fix/live-skin-decoder-hardening fix/entity-handles-within feature/entity-view fix/wall-collision-height docs/fork'
 # Fail before replacing next if a required local ref is missing.
 for b in upstream/master $branches; do
   git -C "$repo" rev-parse --verify "$b^{commit}" >/dev/null
