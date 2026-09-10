@@ -1,13 +1,17 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 )
 
 // SoulSand is a block found naturally only in the Nether. SoulSand slows movement of mobs & players.
-type SoulSand struct {
-	solid
+type SoulSand struct{}
+
+// Model ...
+func (SoulSand) Model() world.BlockModel {
+	return model.Mud{}
 }
 
 // TODO: Implement bubble columns.
