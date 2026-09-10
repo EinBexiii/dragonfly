@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
@@ -23,55 +24,25 @@ type Movement struct {
 	v                    []world.Viewer
 	e                    world.Entity
 	pos, vel, dpos, dvel mgl64.Vec3
-	rot, drot            cube.Rotation
+	rot                  cube.Rotation
 	onGround             bool
 }
 
-// NewMovement creates a Movement that moves an Ent to the position, velocity and rotation passed, updating the
-// entity's data accordingly. Behaviours that run their own physics return it from their Tick method to have the
-// movement sent to viewers.
-func NewMovement(e *Ent, pos, vel mgl64.Vec3, rot cube.Rotation, onGround bool) *Movement {
-	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
-	e.data.Pos, e.data.Vel, e.data.Rot = pos, vel, rot
-	return &Movement{v: e.tx.Viewers(prevPos), e: e,
-		pos: pos, vel: vel, dpos: pos.Sub(prevPos), dvel: vel.Sub(prevVel),
-		rot: rot, drot: cube.Rotation{rot[0] - prevRot[0], rot[1] - prevRot[1]},
-		onGround: onGround,
-	}
-}
-
-// Send sends the Movement to any viewers watching the entity at the time of the movement. If the position, rotation
-// and velocity changes were negligible, nothing is sent.
+// Send sends the Movement to any viewers watching the entity at the time of the movement. If the position/velocity
+// changes were negligible, nothing is sent.
 func (m *Movement) Send() {
 	posChanged := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon)
-	rotChanged := math.Abs(m.drot[0]) > epsilon || math.Abs(m.drot[1]) > epsilon
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
-	// An Entity a client drives is told where it is on every tick and its speed
-	// on none: a position it is not sent is a guess nothing answers, and a
-	// velocity it is sent is a push added to what it is already doing.
-	_, _, driven := m.e.H().Predicted()
-
-	// An Entity resting on a block carries the one tick of gravity holding it
-	// there. That is the server's own bookkeeping, not motion a viewer sees.
-	vel := m.vel
-	if m.onGround && math.Abs(vel[1]) <= restingFall {
-		vel[1] = 0
-	}
-
 	for _, v := range m.v {
-		if posChanged || rotChanged || driven {
+		if posChanged {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
-		if velChanged && !driven {
-			v.ViewEntityVelocity(m.e, vel)
+		if velChanged {
+			v.ViewEntityVelocity(m.e, m.vel)
 		}
 	}
 }
-
-// restingFall is the greatest fall an Entity standing on a block can have: the
-// single tick of gravity holding it against that block.
-const restingFall = 0.09
 
 // Position returns the position as a result of the Movement as an mgl64.Vec3.
 func (m *Movement) Position() mgl64.Vec3 {
@@ -200,13 +171,23 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
 // what blocks need to have their BBox returned.
+// searchRange is the block range whose boxes may collide with box: a
+// quarter block around it, and below it as far as a block's box may reach
+// upward, since a fence or a wall in the block below the lowest one still
+// stands into it. The maximum bounds are exclusive: a block starting
+// exactly at the box's maximum cannot collide with it.
+func searchRange(box cube.BBox) (low, high cube.Pos) {
+	grown := box.Grow(0.25).Extend(mgl64.Vec3{0, 1 - model.BarrierHeight, 0})
+	lo, hi := grown.Min(), grown.Max()
+	low = cube.Pos{int(math.Floor(lo[0])), int(math.Floor(lo[1])), int(math.Floor(lo[2]))}
+	high = cube.Pos{int(math.Ceil(hi[0])), int(math.Ceil(hi[1])), int(math.Ceil(hi[2]))}
+	return low, high
+}
+
 func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
-	grown := box.Grow(0.25)
-	low, high := grown.Min(), grown.Max()
-	minX, minY, minZ := int(math.Floor(low[0])), int(math.Floor(low[1])), int(math.Floor(low[2]))
-	// The maximum bounds are exclusive: A block starting exactly at the box's
-	// maximum cannot collide with it.
-	maxX, maxY, maxZ := int(math.Ceil(high[0])), int(math.Ceil(high[1])), int(math.Ceil(high[2]))
+	low, high := searchRange(box)
+	minX, minY, minZ := low[0], low[1], low[2]
+	maxX, maxY, maxZ := high[0], high[1], high[2]
 
 	// A prediction of one BBox per block, plus an additional 2, in case. Allocate
 	// it lazily so that entities moving through air do not allocate an empty slice
