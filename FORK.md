@@ -59,6 +59,7 @@ the list once upstream merges it.
 | `perf/chunk-height-maps` | Height-map columns are cached and invalidated per column, and a chunk's surface is prepared once per sub-chunk response. | #1449 |
 | `fix/wall-collision-height` | A wall's collision box is the one the Bedrock server computes: a block and a half tall like a fence's whatever the drawn post and arm heights, one enclosing box, a straight postless run as narrow as its arms. Entity movement searches half a block further down for a fence or wall that reaches up into the box. | not yet sent |
 | `fix/low-block-collision` | Rails, pressure plates and buttons have empty collision in every vanilla state, including all wood materials in the bundled palette. Snow layers collide at (layers−1)/8 height with the first layer empty; mud and soul sand collide at 7/8 height. Registers the missing states and their hashes without adding rail or redstone mechanics. Based on `a36ed0ed`; geometry follows the 2026-09-10 Rook block collision audit and state coverage follows the vanilla palette. | not yet sent |
+| `fix/lily-pad-collision` | Lily pads collide 3/32 high, inset a sixteenth, as Bedrock has them (BDS constructor 0xc6840da); the old 1/64 top left a landing player unsupported for the anticheat. Based on `a36ed0ed`; row 6 of the 2026-09-10 Rook block collision audit. | not yet sent |
 
 ## Fixes on the fork's own features
 
