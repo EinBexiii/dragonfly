@@ -101,6 +101,7 @@ type playerData struct {
 	mineBudget float64
 	mineLast   time.Time
 	mineTick   uint64
+	mineCarry  float64 // input delay preserved until this frame's start action
 
 	breakCounter uint32
 
@@ -1841,19 +1842,23 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 
 	p.breaking, p.breakingFace, p.breakProgress = true, face, 0
 	p.breakBlock, _ = p.Tx().Block(pos).EncodeBlock()
-	// A new episode does not refill the budget, or a client naming a new
-	// block for every break would earn its frames for free. It only takes
-	// what real time has passed, and may not carry a whole episode's bank
-	// into the next block.
-	p.mineAccrue()
-	p.mineBudget = math.Min(p.mineBudget, mineBudgetStart)
+	// A delayed start may carry the time since the last input, because its
+	// mining frames can arrive in the same burst. Clamp older savings without
+	// refilling the shared budget, so changing targets cannot earn free frames.
+	carry := max(mineBudgetStart, p.mineCarry, p.mineAccrue())
+	p.mineCarry = 0
+	p.lastBreakDuration = p.breakTime(pos)
+	if p.GameMode().CreativeInventory() || p.lastBreakDuration <= 0 {
+		// Instant breaks after a pause are a flood, not delayed mining work.
+		carry = mineBudgetStart
+	}
+	p.mineBudget = math.Min(p.mineBudget, carry)
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
 		p.lastBreakDuration = 0
 		return
 	}
-	p.lastBreakDuration = p.breakTime(pos)
 	// The frame that starts the episode is its first mining frame.
 	p.mineOnce()
 	for _, viewer := range p.viewers() {
@@ -1866,6 +1871,9 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 // is the client's frame counter; frames it skipped are credited as far
 // as the budget allows, which real time bounds.
 func (p *Player) MineFrame(tick uint64) {
+	// Actions follow MineFrame, so keep this input's delay for StartBreaking.
+	// Accrue even while idle so ordinary inputs cannot bank a false stall.
+	p.mineCarry = p.mineAccrue()
 	frames := 1.0
 	if p.mineTick != 0 && tick > p.mineTick+1 {
 		frames = float64(tick - p.mineTick)
@@ -1886,6 +1894,12 @@ func (p *Player) MineFrame(tick uint64) {
 		if !p.mineOnce() {
 			return
 		}
+		if p.breakProgress >= 1 {
+			// The client may never retry a finish refused before its burst
+			// earned enough progress. Use the normal validation and break path.
+			p.FinishBreaking()
+			return
+		}
 	}
 }
 
@@ -1903,15 +1917,18 @@ func (p *Player) mineAdmit() bool {
 }
 
 // mineAccrue adds the frames real time has passed since the budget was last
-// touched, up to the cap.
-func (p *Player) mineAccrue() {
+// touched, up to the cap, and returns the elapsed frames so a delayed start
+// can distinguish its input gap from older savings.
+func (p *Player) mineAccrue() float64 {
 	now := time.Now()
 	if p.mineLast.IsZero() {
 		p.mineBudget, p.mineLast = mineBudgetStart, now
-		return
+		return 0
 	}
-	p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+float64(now.Sub(p.mineLast))/float64(tickDuration))
+	frames := float64(now.Sub(p.mineLast)) / float64(tickDuration)
+	p.mineBudget = math.Min(mineBudgetCap, p.mineBudget+frames)
 	p.mineLast = now
+	return frames
 }
 
 // mineOnce credits one frame of mining to the active episode if the
@@ -1965,7 +1982,8 @@ func (p *Player) FinishBreaking() { p.FinishBreakingAt(p.breakingPos) }
 // FinishBreakingAt is FinishBreaking for the block the client names: a
 // finish for another block than the one being broken, or before the
 // episode earned the block's full break time, resends the block and
-// keeps what was earned; the client starts again and finishes later.
+// keeps what was earned; subsequent mining frames can complete the break
+// even if the client does not retry its finish.
 func (p *Player) FinishBreakingAt(pos cube.Pos) {
 	if !p.breaking || pos != p.breakingPos {
 		// A block the held tool breaks within a frame needs no episode:
@@ -1999,10 +2017,10 @@ func (p *Player) FinishBreakingAt(pos cube.Pos) {
 	p.BreakBlock(pos)
 }
 
-// tickDuration is one client frame. mineBudgetStart is what a break may
-// spend at once, the current frame and one of batching, and is all a new
-// episode may carry in; mineBudgetCap is how much real time an episode
-// already underway may bank while its inputs are delayed on their way.
+// tickDuration is one client frame. mineBudgetStart allows the current frame
+// and one of batching at a start without a stall, and limits instant breaks
+// even after a pause. mineBudgetCap bounds delayed work: an episode may bank
+// it, and a start may carry only its input delay or the normal start allowance.
 const (
 	tickDuration    = time.Second / 20
 	mineBudgetStart = 2.0
