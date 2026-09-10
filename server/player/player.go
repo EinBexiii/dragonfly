@@ -1885,6 +1885,14 @@ func (p *Player) MineFrame(tick uint64) {
 	if !p.breaking || p.GameMode().CreativeInventory() {
 		return
 	}
+	if p.finishAsked && p.breakProgress >= 1 {
+		// The client asked to finish before its burst had earned the time
+		// and may never ask again. It is answered on the input after the
+		// one that earned it, so that input's actions, an abort among them,
+		// came first; the finish goes through the same validation.
+		p.FinishBreaking()
+		return
+	}
 	if !p.canReach(p.breakingPos.Vec3Centre()) {
 		p.AbortBreaking()
 		return
@@ -1893,18 +1901,7 @@ func (p *Player) MineFrame(tick uint64) {
 		p.AbortBreaking()
 		return
 	}
-	for i := 0.0; i < frames; i++ {
-		if !p.mineOnce() {
-			return
-		}
-		if p.finishAsked && p.breakProgress >= 1 {
-			// The client asked to finish before its burst had earned the
-			// time and may never ask again; it is answered now, through the
-			// same validation. A break the client never asked to finish is
-			// left to its next action, which may be an abort.
-			p.FinishBreaking()
-			return
-		}
+	for i := 0.0; i < frames && p.mineOnce(); i++ {
 	}
 }
 
@@ -2013,7 +2010,7 @@ func (p *Player) FinishBreakingAt(pos cube.Pos) {
 		if name, _ := p.Tx().Block(pos).EncodeBlock(); name != p.breakBlock || !p.canReach(pos.Vec3Centre()) || p.breakProgress < 1-1e-9 {
 			if name != p.breakBlock {
 				p.AbortBreaking()
-			} else {
+			} else if p.breakProgress < 1-1e-9 {
 				p.finishAsked = true
 			}
 			p.resendNearbyBlock(pos)
