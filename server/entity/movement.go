@@ -169,8 +169,6 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
 }
 
-// blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
-// what blocks need to have their BBox returned.
 // searchRange is the block range whose boxes may collide with box: a
 // quarter block around it, and below it as far as a block's box may reach
 // upward, since a fence or a wall in the block below the lowest one still
@@ -184,6 +182,8 @@ func searchRange(box cube.BBox) (low, high cube.Pos) {
 	return low, high
 }
 
+// blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
+// what blocks need to have their BBox returned.
 func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
 	low, high := searchRange(box)
 	minX, minY, minZ := low[0], low[1], low[2]
