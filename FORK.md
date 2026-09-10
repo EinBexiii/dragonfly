@@ -57,7 +57,7 @@ the list once upstream merges it.
 | `fix/nil-block-entity-nbt` | A block entity that encodes to nil NBT no longer panics the chunk send path. | #1275 |
 | `fix/spectator-game-mode` | Spectator is reproduced as measured on BDS 1.26.45: a game mode change is one player game type update addressed to the player's own unique ID (spectator is 6); a spectator's abilities carry the spectator layer ahead of the base layer, for the player and in the AddPlayer other clients get; the client hides a spectator by game type, so no invisibility is forced and no teleport is sent; a spectator cannot use items, and its request to stop flying is ignored. | #1285 |
 | `perf/chunk-height-maps` | Height-map columns are cached and invalidated per column, and a chunk's surface is prepared once per sub-chunk response. | #1449 |
-| `fix/wall-collision-height` | A wall's collision boxes are a block and a half tall like a fence's, whatever the drawn post and arm heights; a player standing on a wall no longer floats half a block above the server's box. | not yet sent |
+| `fix/wall-collision-height` | A wall's collision box is the one the Bedrock server computes: a block and a half tall like a fence's whatever the drawn post and arm heights, one enclosing box, a straight postless run as narrow as its arms. Entity movement searches half a block further down for a fence or wall that reaches up into the box. | not yet sent |
 
 ## Fixes on the fork's own features
 
