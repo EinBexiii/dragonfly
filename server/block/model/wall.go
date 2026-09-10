@@ -19,24 +19,28 @@ type Wall struct {
 	Post bool
 }
 
-// BBox ...
+// wallCollisionHeight is how tall a wall is to an entity: like a fence, a
+// wall cannot be jumped over, so its collision box reaches a block and a
+// half whatever its post and connections look like. A player standing on a
+// wall stands at that height; a shorter box has the server see them float.
+const wallCollisionHeight = 1.5
+
+// BBox returns the wall's collision boxes. The post and connection heights
+// describe the shape the client draws; the boxes an entity collides with
+// are all wallCollisionHeight tall.
 func (w Wall) BBox(cube.Pos, world.BlockSource) []cube.BBox {
-	postHeight := 0.8125
-	if w.Post {
-		postHeight = 1
-	}
-	boxes := []cube.BBox{cube.Box(0.25, 0, 0.25, 0.75, postHeight, 0.75)}
+	boxes := []cube.BBox{cube.Box(0.25, 0, 0.25, 0.75, wallCollisionHeight, 0.75)}
 	if w.NorthConnection > 0 {
-		boxes = append(boxes, cube.Box(0.25, 0, 0, 0.75, w.NorthConnection, 0.25))
+		boxes = append(boxes, cube.Box(0.25, 0, 0, 0.75, wallCollisionHeight, 0.25))
 	}
 	if w.EastConnection > 0 {
-		boxes = append(boxes, cube.Box(0.75, 0, 0.25, 1, w.EastConnection, 0.75))
+		boxes = append(boxes, cube.Box(0.75, 0, 0.25, 1, wallCollisionHeight, 0.75))
 	}
 	if w.SouthConnection > 0 {
-		boxes = append(boxes, cube.Box(0.25, 0, 0.75, 0.75, w.SouthConnection, 1))
+		boxes = append(boxes, cube.Box(0.25, 0, 0.75, 0.75, wallCollisionHeight, 1))
 	}
 	if w.WestConnection > 0 {
-		boxes = append(boxes, cube.Box(0, 0, 0.25, 0.25, w.WestConnection, 0.75))
+		boxes = append(boxes, cube.Box(0, 0, 0.25, 0.25, wallCollisionHeight, 0.75))
 	}
 	return boxes
 }
