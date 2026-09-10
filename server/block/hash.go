@@ -5,7 +5,8 @@ package block
 import "github.com/df-mc/dragonfly/server/world"
 
 const (
-	hashAir = iota
+	hashActivatorRail = iota
+	hashAir
 	hashAmethyst
 	hashAncientDebris
 	hashAndesite
@@ -67,6 +68,7 @@ const (
 	hashDeepslate
 	hashDeepslateBricks
 	hashDeepslateTiles
+	hashDetectorRail
 	hashDiamond
 	hashDiamondOre
 	hashDiorite
@@ -158,8 +160,11 @@ const (
 	hashPolishedCinnabar
 	hashPolishedSulfur
 	hashPolishedTuff
+	hashPoplarButton
+	hashPoplarPressurePlate
 	hashPortal
 	hashPotato
+	hashPoweredRail
 	hashPrismarine
 	hashPumpkin
 	hashPumpkinSeeds
@@ -168,6 +173,7 @@ const (
 	hashQuartz
 	hashQuartzBricks
 	hashQuartzPillar
+	hashRail
 	hashRawCopper
 	hashRawGold
 	hashRawIron
@@ -193,6 +199,7 @@ const (
 	hashSmoker
 	hashSmoothBasalt
 	hashSnow
+	hashSnowLayer
 	hashSoulSand
 	hashSoulSoil
 	hashSponge
@@ -203,6 +210,8 @@ const (
 	hashStairs
 	hashStone
 	hashStoneBricks
+	hashStoneButton
+	hashStonePressurePlate
 	hashStonecutter
 	hashString
 	hashSugarCane
@@ -217,11 +226,14 @@ const (
 	hashVines
 	hashWall
 	hashWater
+	hashWeightedPressurePlate
 	hashWheatSeeds
 	hashWood
+	hashWoodButton
 	hashWoodDoor
 	hashWoodFence
 	hashWoodFenceGate
+	hashWoodPressurePlate
 	hashWoodTrapdoor
 	hashWool
 	hashCustomBlockBase
@@ -234,6 +246,10 @@ var customBlockBase = uint64(hashCustomBlockBase - 1)
 func NextHash() uint64 {
 	customBlockBase++
 	return customBlockBase
+}
+
+func (r ActivatorRail) Hash() (uint64, uint64) {
+	return hashActivatorRail, uint64(r.Direction) | uint64(boolByte(r.Powered))<<8
 }
 
 func (Air) Hash() (uint64, uint64) {
@@ -482,6 +498,10 @@ func (d DeepslateBricks) Hash() (uint64, uint64) {
 
 func (d DeepslateTiles) Hash() (uint64, uint64) {
 	return hashDeepslateTiles, uint64(boolByte(d.Cracked))
+}
+
+func (r DetectorRail) Hash() (uint64, uint64) {
+	return hashDetectorRail, uint64(r.Direction) | uint64(boolByte(r.Powered))<<8
 }
 
 func (Diamond) Hash() (uint64, uint64) {
@@ -848,12 +868,24 @@ func (PolishedTuff) Hash() (uint64, uint64) {
 	return hashPolishedTuff, 0
 }
 
+func (b PoplarButton) Hash() (uint64, uint64) {
+	return hashPoplarButton, uint64(b.Facing) | uint64(boolByte(b.Pressed))<<3
+}
+
+func (b PoplarPressurePlate) Hash() (uint64, uint64) {
+	return hashPoplarPressurePlate, uint64(b.Power)
+}
+
 func (p Portal) Hash() (uint64, uint64) {
 	return hashPortal, uint64(p.Axis)
 }
 
 func (p Potato) Hash() (uint64, uint64) {
 	return hashPotato, uint64(p.Growth)
+}
+
+func (r PoweredRail) Hash() (uint64, uint64) {
+	return hashPoweredRail, uint64(r.Direction) | uint64(boolByte(r.Powered))<<8
 }
 
 func (p Prismarine) Hash() (uint64, uint64) {
@@ -886,6 +918,10 @@ func (QuartzBricks) Hash() (uint64, uint64) {
 
 func (q QuartzPillar) Hash() (uint64, uint64) {
 	return hashQuartzPillar, uint64(q.Axis)
+}
+
+func (r Rail) Hash() (uint64, uint64) {
+	return hashRail, uint64(r.Direction)
 }
 
 func (RawCopper) Hash() (uint64, uint64) {
@@ -988,6 +1024,10 @@ func (Snow) Hash() (uint64, uint64) {
 	return hashSnow, 0
 }
 
+func (s SnowLayer) Hash() (uint64, uint64) {
+	return hashSnowLayer, uint64(s.Layers) | uint64(boolByte(s.Covered))<<8
+}
+
 func (SoulSand) Hash() (uint64, uint64) {
 	return hashSoulSand, 0
 }
@@ -1026,6 +1066,14 @@ func (s Stone) Hash() (uint64, uint64) {
 
 func (s StoneBricks) Hash() (uint64, uint64) {
 	return hashStoneBricks, uint64(s.Type.Uint8())
+}
+
+func (b StoneButton) Hash() (uint64, uint64) {
+	return hashStoneButton, uint64(boolByte(b.Blackstone)) | uint64(b.Facing)<<1 | uint64(boolByte(b.Pressed))<<4
+}
+
+func (b StonePressurePlate) Hash() (uint64, uint64) {
+	return hashStonePressurePlate, uint64(boolByte(b.Blackstone)) | uint64(b.Power)<<1
 }
 
 func (s Stonecutter) Hash() (uint64, uint64) {
@@ -1084,12 +1132,20 @@ func (w Water) Hash() (uint64, uint64) {
 	return hashWater, uint64(boolByte(w.Still)) | uint64(w.Depth)<<1 | uint64(boolByte(w.Falling))<<9
 }
 
+func (b WeightedPressurePlate) Hash() (uint64, uint64) {
+	return hashWeightedPressurePlate, uint64(boolByte(b.Heavy)) | uint64(b.Power)<<1
+}
+
 func (s WheatSeeds) Hash() (uint64, uint64) {
 	return hashWheatSeeds, uint64(s.Growth)
 }
 
 func (w Wood) Hash() (uint64, uint64) {
 	return hashWood, uint64(w.Wood.Uint8()) | uint64(boolByte(w.Stripped))<<4 | uint64(w.Axis)<<5
+}
+
+func (b WoodButton) Hash() (uint64, uint64) {
+	return hashWoodButton, uint64(b.Wood.Uint8()) | uint64(b.Facing)<<4 | uint64(boolByte(b.Pressed))<<7
 }
 
 func (d WoodDoor) Hash() (uint64, uint64) {
@@ -1102,6 +1158,10 @@ func (w WoodFence) Hash() (uint64, uint64) {
 
 func (f WoodFenceGate) Hash() (uint64, uint64) {
 	return hashWoodFenceGate, uint64(f.Wood.Uint8()) | uint64(f.Facing)<<4 | uint64(boolByte(f.Open))<<6 | uint64(boolByte(f.Lowered))<<7
+}
+
+func (b WoodPressurePlate) Hash() (uint64, uint64) {
+	return hashWoodPressurePlate, uint64(b.Wood.Uint8()) | uint64(b.Power)<<4
 }
 
 func (t WoodTrapdoor) Hash() (uint64, uint64) {
