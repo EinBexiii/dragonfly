@@ -102,6 +102,9 @@ type playerData struct {
 	mineLast   time.Time
 	mineTick   uint64
 	mineCarry  float64 // input delay preserved until this frame's start action
+	// finishAsked is a finish the client asked for before the episode had
+	// earned its time; the next frame that earns it completes the break.
+	finishAsked bool
 
 	breakCounter uint32
 
@@ -1894,9 +1897,11 @@ func (p *Player) MineFrame(tick uint64) {
 		if !p.mineOnce() {
 			return
 		}
-		if p.breakProgress >= 1 {
-			// The client may never retry a finish refused before its burst
-			// earned enough progress. Use the normal validation and break path.
+		if p.finishAsked && p.breakProgress >= 1 {
+			// The client asked to finish before its burst had earned the
+			// time and may never ask again; it is answered now, through the
+			// same validation. A break the client never asked to finish is
+			// left to its next action, which may be an abort.
 			p.FinishBreaking()
 			return
 		}
@@ -2008,6 +2013,8 @@ func (p *Player) FinishBreakingAt(pos cube.Pos) {
 		if name, _ := p.Tx().Block(pos).EncodeBlock(); name != p.breakBlock || !p.canReach(pos.Vec3Centre()) || p.breakProgress < 1-1e-9 {
 			if name != p.breakBlock {
 				p.AbortBreaking()
+			} else {
+				p.finishAsked = true
 			}
 			p.resendNearbyBlock(pos)
 			return
@@ -2034,7 +2041,7 @@ func (p *Player) AbortBreaking() {
 	if !p.breaking {
 		return
 	}
-	p.breaking, p.breakCounter = false, 0
+	p.breaking, p.breakCounter, p.finishAsked = false, 0, false
 	for _, viewer := range p.viewers() {
 		viewer.ViewBlockAction(p.breakingPos, block.StopCrackAction{})
 	}
