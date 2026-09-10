@@ -24,25 +24,55 @@ type Movement struct {
 	v                    []world.Viewer
 	e                    world.Entity
 	pos, vel, dpos, dvel mgl64.Vec3
-	rot                  cube.Rotation
+	rot, drot            cube.Rotation
 	onGround             bool
 }
 
-// Send sends the Movement to any viewers watching the entity at the time of the movement. If the position/velocity
-// changes were negligible, nothing is sent.
+// NewMovement creates a Movement that moves an Ent to the position, velocity and rotation passed, updating the
+// entity's data accordingly. Behaviours that run their own physics return it from their Tick method to have the
+// movement sent to viewers.
+func NewMovement(e *Ent, pos, vel mgl64.Vec3, rot cube.Rotation, onGround bool) *Movement {
+	prevPos, prevVel, prevRot := e.data.Pos, e.data.Vel, e.data.Rot
+	e.data.Pos, e.data.Vel, e.data.Rot = pos, vel, rot
+	return &Movement{v: e.tx.Viewers(prevPos), e: e,
+		pos: pos, vel: vel, dpos: pos.Sub(prevPos), dvel: vel.Sub(prevVel),
+		rot: rot, drot: cube.Rotation{rot[0] - prevRot[0], rot[1] - prevRot[1]},
+		onGround: onGround,
+	}
+}
+
+// Send sends the Movement to any viewers watching the entity at the time of the movement. If the position, rotation
+// and velocity changes were negligible, nothing is sent.
 func (m *Movement) Send() {
 	posChanged := !m.dpos.ApproxEqualThreshold(zeroVec3, epsilon)
+	rotChanged := math.Abs(m.drot[0]) > epsilon || math.Abs(m.drot[1]) > epsilon
 	velChanged := !m.dvel.ApproxEqualThreshold(zeroVec3, epsilon)
 
+	// An Entity a client drives is told where it is on every tick and its speed
+	// on none: a position it is not sent is a guess nothing answers, and a
+	// velocity it is sent is a push added to what it is already doing.
+	_, _, driven := m.e.H().Predicted()
+
+	// An Entity resting on a block carries the one tick of gravity holding it
+	// there. That is the server's own bookkeeping, not motion a viewer sees.
+	vel := m.vel
+	if m.onGround && math.Abs(vel[1]) <= restingFall {
+		vel[1] = 0
+	}
+
 	for _, v := range m.v {
-		if posChanged {
+		if posChanged || rotChanged || driven {
 			v.ViewEntityMovement(m.e, m.pos, m.rot, m.onGround)
 		}
-		if velChanged {
-			v.ViewEntityVelocity(m.e, m.vel)
+		if velChanged && !driven {
+			v.ViewEntityVelocity(m.e, vel)
 		}
 	}
 }
+
+// restingFall is the greatest fall an Entity standing on a block can have: the
+// single tick of gravity holding it against that block.
+const restingFall = 0.09
 
 // Position returns the position as a result of the Movement as an mgl64.Vec3.
 func (m *Movement) Position() mgl64.Vec3 {
