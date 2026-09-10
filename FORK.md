@@ -11,6 +11,24 @@ whenever it changes; a branch that is not on the list is not in `next`.
 `upstream/master` is at the version named by the most recent `dragonfly:
 Updated to ...` commit below the merges.
 
+## Rebuild tooling
+
+Maintain [mknext.sh](tools/fork/mknext.sh), its [resolver](tools/fork/resolve.py),
+and the [fork maintainer agent](.claude/agents/fork-maintainer.md) on `docs/fork`.
+
+Run `sh tools/fork/mknext.sh` from a clean `docs/fork` worktree to rebuild that
+checkout, or `sh tools/fork/mknext.sh /path/to/fork-checkout` to rebuild a
+separate clean checkout. The target needs `upstream/master` and every branch
+in the script as local refs; the tool does not fetch or push. It refuses a
+dirty target or missing refs before replacing `next`. The resolver is copied
+to temporary storage because checking out upstream removes these tools until
+`docs/fork` is merged again. The shell loads the rebuild function first.
+
+A rebuild replaces `next` and replays the full list onto `upstream/master`.
+Inspect the target checkout and branch topology before using it. To land one
+constituent branch, maintain the script's list on `docs/fork` and merge that
+branch into `next`; a full rebuild is a separate operation.
+
 ## Features
 
 | Branch | Adds |
@@ -39,6 +57,7 @@ the list once upstream merges it.
 | `fix/nil-block-entity-nbt` | A block entity that encodes to nil NBT no longer panics the chunk send path. | #1275 |
 | `fix/spectator-game-mode` | Spectator is reproduced as measured on BDS 1.26.45: a game mode change is one player game type update addressed to the player's own unique ID (spectator is 6); a spectator's abilities carry the spectator layer ahead of the base layer, for the player and in the AddPlayer other clients get; the client hides a spectator by game type, so no invisibility is forced and no teleport is sent; a spectator cannot use items, and its request to stop flying is ignored. | #1285 |
 | `perf/chunk-height-maps` | Height-map columns are cached and invalidated per column, and a chunk's surface is prepared once per sub-chunk response. | #1449 |
+| `fix/wall-collision-height` | A wall's collision boxes are a block and a half tall like a fence's, whatever the drawn post and arm heights; a player standing on a wall no longer floats half a block above the server's box. | not yet sent |
 
 ## Fixes on the fork's own features
 
@@ -64,4 +83,4 @@ Independent of the fork's features, candidates for upstream pull requests.
 
 | Branch | Adds |
 |---|---|
-| `docs/fork` | This file. |
+| `docs/fork` | This file, the rebuild tools, and the fork maintainer agent. |
