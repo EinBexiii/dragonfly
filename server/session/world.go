@@ -473,6 +473,15 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 // ViewParticle ...
 func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	switch pa := p.(type) {
+	case particle.Custom:
+		dim, _ := world.DimensionID(s.chunkLoader.World().Dimension())
+		s.writePacket(&packet.SpawnParticleEffect{
+			Dimension:      byte(dim),
+			EntityUniqueID: -1,
+			Position:       vec64To32(pos),
+			ParticleName:   pa.Name,
+		})
+		return
 	case particle.DragonEggTeleport:
 		xSign, ySign, zSign := 0, 0, 0
 		if pa.Diff.X() < 0 {
