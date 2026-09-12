@@ -379,6 +379,9 @@ func (s *Session) ViewSleepingPlayers(sleeping, max int) {
 func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 	switch pa := p.(type) {
 	case particle.Custom:
+		if s == Nop {
+			return
+		}
 		dim, _ := world.DimensionID(s.chunkLoader.World().Dimension())
 		s.writePacket(&packet.SpawnParticleEffect{
 			Dimension:      byte(dim),
