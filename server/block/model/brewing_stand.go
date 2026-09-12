@@ -12,7 +12,9 @@ type BrewingStand struct{}
 func (b BrewingStand) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	return []cube.BBox{
 		full.ExtendTowards(cube.FaceUp, -0.875),
-		full.Stretch(cube.X, -0.4375).Stretch(cube.Z, -0.4375).ExtendTowards(cube.FaceDown, 0.125),
+		// The stem stands on the base and stops an eighth below the top
+		// (BDS collector 0x141ef62a0).
+		cube.Box(0.4375, 0, 0.4375, 0.5625, 0.875, 0.5625),
 	}
 }
 
