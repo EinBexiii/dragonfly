@@ -5,6 +5,11 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
+// trapdoorThickness is the thickness of a trapdoor's collision box as the
+// Bedrock server has it, 2.92 of 16. Java's 3/16 leaves a player who lands
+// on the trapdoor standing inside the box rather than on it.
+const trapdoorThickness = 0.1825
+
 // Trapdoor is a model used for trapdoors. It has no solid faces and a bounding box that changes depending on
 // the direction of the trapdoor.
 type Trapdoor struct {
@@ -19,11 +24,11 @@ type Trapdoor struct {
 // top part of the block.
 func (t Trapdoor) BBox(cube.Pos, world.BlockSource) []cube.BBox {
 	if t.Open {
-		return []cube.BBox{full.ExtendTowards(t.Facing.Face(), -0.8125)}
+		return []cube.BBox{full.ExtendTowards(t.Facing.Face(), trapdoorThickness-1)}
 	} else if t.Top {
-		return []cube.BBox{cube.Box(0, 0.8125, 0, 1, 1, 1)}
+		return []cube.BBox{cube.Box(0, 1-trapdoorThickness, 0, 1, 1, 1)}
 	}
-	return []cube.BBox{cube.Box(0, 0, 0, 1, 0.1875, 1)}
+	return []cube.BBox{cube.Box(0, 0, 0, 1, trapdoorThickness, 1)}
 }
 
 // FaceSolid returns true if the face is completely filled with the trapdoor.
