@@ -380,7 +380,7 @@ func (c Carrot) Hash() (uint64, uint64) {
 }
 
 func (c Cauldron) Hash() (uint64, uint64) {
-	return hashCauldron, uint64(c.Level)
+	return hashCauldron, uint64(c.Liquid.Uint8()) | uint64(c.Level)<<2
 }
 
 func (c Chest) Hash() (uint64, uint64) {

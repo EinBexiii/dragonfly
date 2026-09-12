@@ -14,6 +14,11 @@ const (
 	CauldronPowderSnow
 )
 
+// Uint8 ...
+func (l CauldronLiquid) Uint8() uint8 {
+	return uint8(l)
+}
+
 // String ...
 func (l CauldronLiquid) String() string {
 	switch l {
