@@ -61,6 +61,7 @@ the list once upstream merges it.
 | `fix/low-block-collision` | Rails, pressure plates and buttons have empty collision in every vanilla state, including all wood materials in the bundled palette. Snow layers collide at (layers−1)/8 height with the first layer empty; mud and soul sand collide at 7/8 height. Registers the missing states and their hashes without adding rail or redstone mechanics. Based on `a36ed0ed`; geometry follows the 2026-09-10 Rook block collision audit and state coverage follows the vanilla palette. | not yet sent |
 | `fix/lily-pad-collision` | Lily pads collide 3/32 high, inset a sixteenth, as Bedrock has them (BDS constructor 0xc6840da); the old 1/64 top left a landing player unsupported for the anticheat. Based on `a36ed0ed`; row 6 of the 2026-09-10 Rook block collision audit. | not yet sent |
 | `fix/trapdoor-collision` | Trapdoors collide 0.1825 thick in every orientation, as Bedrock has them; Java's 3/16 left a landing player standing 0.005 inside the box, which the anticheat read as an unexplained clipped fall. Based on `a36ed0ed`. | not yet sent |
+| `fix/flower-pot-collision` | Flower pots are registered with Bedrock's centred 3/8 by 3/8 collision box, collision only; the palette had the states but no block, so the fallback full cube left a standing player 5/8 inside it. Based on `a36ed0ed`; row 22 of the 2026-09-10 Rook block collision audit. | not yet sent |
 
 ## Fixes on the fork's own features
 
