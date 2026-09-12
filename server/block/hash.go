@@ -93,6 +93,7 @@ const (
 	hashFire
 	hashFletchingTable
 	hashFlower
+	hashFlowerPot
 	hashFroglight
 	hashFurnace
 	hashGlass
@@ -598,6 +599,10 @@ func (FletchingTable) Hash() (uint64, uint64) {
 
 func (f Flower) Hash() (uint64, uint64) {
 	return hashFlower, uint64(f.Type.Uint8())
+}
+
+func (f FlowerPot) Hash() (uint64, uint64) {
+	return hashFlowerPot, uint64(boolByte(f.Update))
 }
 
 func (f Froglight) Hash() (uint64, uint64) {
