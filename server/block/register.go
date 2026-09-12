@@ -192,6 +192,7 @@ func init() {
 	registerAll(allFence())
 	registerAll(allFenceGates())
 	registerAll(allFire())
+	registerAll(allFlowerPots())
 	registerAll(allFlowers())
 	registerAll(allFroglight())
 	registerAll(allFurnaces())
