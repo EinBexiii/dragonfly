@@ -481,6 +481,7 @@ func init() {
 		world.RegisterItem(ConcretePowder{Colour: c})
 		world.RegisterItem(Concrete{Colour: c})
 		world.RegisterItem(GlazedTerracotta{Colour: c})
+		world.RegisterItem(StainedGlassPane{Colour: c, Hardened: true})
 		world.RegisterItem(StainedGlassPane{Colour: c})
 		world.RegisterItem(StainedGlass{Colour: c})
 		world.RegisterItem(StainedTerracotta{Colour: c})

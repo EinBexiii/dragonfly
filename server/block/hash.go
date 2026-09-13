@@ -1034,7 +1034,7 @@ func (g StainedGlass) Hash() (uint64, uint64) {
 }
 
 func (p StainedGlassPane) Hash() (uint64, uint64) {
-	return hashStainedGlassPane, uint64(p.Colour.Uint8())
+	return hashStainedGlassPane, uint64(p.Colour.Uint8()) | uint64(boolByte(p.Hardened))<<4
 }
 
 func (t StainedTerracotta) Hash() (uint64, uint64) {
