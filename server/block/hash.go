@@ -72,6 +72,7 @@ const (
 	hashDiorite
 	hashDirt
 	hashDirtPath
+	hashDispenser
 	hashDoubleFlower
 	hashDoubleTallGrass
 	hashDragonEgg
@@ -92,6 +93,7 @@ const (
 	hashFletchingTable
 	hashFlower
 	hashFroglight
+	hashFrostedIce
 	hashFurnace
 	hashGlass
 	hashGlassPane
@@ -507,6 +509,10 @@ func (DirtPath) Hash() (uint64, uint64) {
 	return hashDirtPath, 0
 }
 
+func (d Dispenser) Hash() (uint64, uint64) {
+	return hashDispenser, uint64(d.Facing) | uint64(boolByte(d.Triggered))<<3
+}
+
 func (d DoubleFlower) Hash() (uint64, uint64) {
 	return hashDoubleFlower, uint64(boolByte(d.UpperPart)) | uint64(d.Type.Uint8())<<1
 }
@@ -585,6 +591,10 @@ func (f Flower) Hash() (uint64, uint64) {
 
 func (f Froglight) Hash() (uint64, uint64) {
 	return hashFroglight, uint64(f.Type.Uint8()) | uint64(f.Axis)<<2
+}
+
+func (f FrostedIce) Hash() (uint64, uint64) {
+	return hashFrostedIce, uint64(f.Age)
 }
 
 func (f Furnace) Hash() (uint64, uint64) {
