@@ -20,6 +20,8 @@ type Door struct {
 	Right bool
 	// Top specifies the upper half of the door.
 	Top bool
+	// Kind names the door's material; the two halves pair only when they are the same door.
+	Kind string
 }
 
 // BBox returns a physics.BBox that depends on if the Door is open, what direction it is facing and whether it is
@@ -36,15 +38,15 @@ func (d Door) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 	return []cube.BBox{full.ExtendTowards(lower.Facing.RotateRight().Face(), doorThickness-1)}
 }
 
-// halves returns the lower and upper half of the door at pos. A half without a door as its partner is
-// judged as Bedrock does: closed, hinge left, facing the first cardinal direction.
+// halves returns the lower and upper half of the door at pos. A half whose partner is not the same kind of
+// door is judged as Bedrock does: closed, hinge left, facing the first cardinal direction.
 func (d Door) halves(pos cube.Pos, s world.BlockSource) (lower, upper Door) {
 	partnerFace := cube.FaceUp
 	if d.Top {
 		partnerFace = cube.FaceDown
 	}
 	partner, ok := s.Block(pos.Side(partnerFace)).Model().(Door)
-	if !ok {
+	if !ok || partner.Kind != d.Kind {
 		orphan := Door{Facing: cube.South.RotateLeft()}
 		return orphan, orphan
 	}
