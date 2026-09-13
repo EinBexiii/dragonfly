@@ -10,6 +10,8 @@ type (
 	// Piston is a block that pushes the blocks in front of it when powered. It does not move anything here:
 	// the lobby only uses it as decoration.
 	Piston struct {
+		// The base keeps a full cube whether it is retracted or extended: the Bedrock server never shortens
+		// it to 0.75 on its facing side, so neither does this.
 		solid
 
 		// Sticky specifies if the piston is a sticky piston, which pulls blocks back when it retracts.
@@ -28,8 +30,8 @@ type (
 )
 
 // Model ...
-func (PistonArm) Model() world.BlockModel {
-	return model.PistonArm{}
+func (p PistonArm) Model() world.BlockModel {
+	return model.PistonArm{Facing: p.Facing}
 }
 
 // BreakInfo ...
