@@ -390,6 +390,17 @@ func (b Bone) WithAxis(axis cube.Axis) world.Block {
 }
 
 // PillarAxis returns the axis the block is oriented along.
+func (b ChiseledQuartz) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b ChiseledQuartz) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
 func (b CopperChain) PillarAxis() cube.Axis {
 	return b.Axis
 }
@@ -495,6 +506,17 @@ func (b PurpurPillar) PillarAxis() cube.Axis {
 
 // WithAxis returns a copy of the block with its axis set to axis.
 func (b PurpurPillar) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
+func (b Quartz) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b Quartz) WithAxis(axis cube.Axis) world.Block {
 	b.Axis = axis
 	return b
 }

@@ -364,8 +364,8 @@ func (c Chest) Hash() (uint64, uint64) {
 	return hashChest, uint64(c.Facing)
 }
 
-func (ChiseledQuartz) Hash() (uint64, uint64) {
-	return hashChiseledQuartz, 0
+func (c ChiseledQuartz) Hash() (uint64, uint64) {
+	return hashChiseledQuartz, uint64(c.Axis)
 }
 
 func (c Cinnabar) Hash() (uint64, uint64) {
@@ -877,7 +877,7 @@ func (p PurpurPillar) Hash() (uint64, uint64) {
 }
 
 func (q Quartz) Hash() (uint64, uint64) {
-	return hashQuartz, uint64(boolByte(q.Smooth))
+	return hashQuartz, uint64(boolByte(q.Smooth)) | uint64(q.Axis)<<1
 }
 
 func (QuartzBricks) Hash() (uint64, uint64) {
