@@ -188,6 +188,7 @@ func init() {
 	registerAll(allDeepslate())
 	registerAll(allDetectorRails())
 	registerAll(allDoors())
+	registerAll(allIronDoors())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
 	registerAll(allEndRods())
