@@ -184,6 +184,7 @@ func init() {
 	registerAll(allCoralBlocks())
 	registerAll(allDeepslate())
 	registerAll(allDoors())
+	registerAll(allIronDoors())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
 	registerAll(allEndRods())
