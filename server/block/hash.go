@@ -62,6 +62,7 @@ const (
 	hashCoral
 	hashCoralBlock
 	hashCraftingTable
+	hashDaylightDetector
 	hashDeadBush
 	hashDecoratedPot
 	hashDeepslate
@@ -468,6 +469,10 @@ func (c CoralBlock) Hash() (uint64, uint64) {
 
 func (CraftingTable) Hash() (uint64, uint64) {
 	return hashCraftingTable, 0
+}
+
+func (d DaylightDetector) Hash() (uint64, uint64) {
+	return hashDaylightDetector, uint64(boolByte(d.Inverted)) | uint64(d.Signal)<<1
 }
 
 func (DeadBush) Hash() (uint64, uint64) {
