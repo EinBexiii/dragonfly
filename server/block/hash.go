@@ -38,6 +38,8 @@ const (
 	hashCarrot
 	hashChest
 	hashChiseledQuartz
+	hashChorusFlower
+	hashChorusPlant
 	hashCinnabar
 	hashCinnabarBricks
 	hashClay
@@ -157,6 +159,8 @@ const (
 	hashPackedIce
 	hashPackedMud
 	hashPinkPetals
+	hashPiston
+	hashPistonArm
 	hashPlanks
 	hashPodzol
 	hashPolishedBlackstoneBrick
@@ -373,6 +377,14 @@ func (c Chest) Hash() (uint64, uint64) {
 
 func (c ChiseledQuartz) Hash() (uint64, uint64) {
 	return hashChiseledQuartz, uint64(c.Axis)
+}
+
+func (c ChorusFlower) Hash() (uint64, uint64) {
+	return hashChorusFlower, uint64(c.Age)
+}
+
+func (ChorusPlant) Hash() (uint64, uint64) {
+	return hashChorusPlant, 0
 }
 
 func (c Cinnabar) Hash() (uint64, uint64) {
@@ -849,6 +861,14 @@ func (PackedMud) Hash() (uint64, uint64) {
 
 func (p PinkPetals) Hash() (uint64, uint64) {
 	return hashPinkPetals, uint64(p.AdditionalCount) | uint64(p.Facing)<<8
+}
+
+func (p Piston) Hash() (uint64, uint64) {
+	return hashPiston, uint64(boolByte(p.Sticky)) | uint64(p.Facing)<<1
+}
+
+func (p PistonArm) Hash() (uint64, uint64) {
+	return hashPistonArm, uint64(boolByte(p.Sticky)) | uint64(p.Facing)<<1
 }
 
 func (p Planks) Hash() (uint64, uint64) {
