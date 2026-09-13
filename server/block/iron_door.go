@@ -8,7 +8,8 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// IronDoor is a 1x2 barrier that only redstone opens; a player cannot open it by hand.
+// IronDoor is a 1x2 barrier a player cannot open by hand. The game opens it by redstone; this fork has no
+// redstone hook for it yet, so it stays as the world stores it.
 type IronDoor struct {
 	transparent
 	bass
@@ -27,7 +28,7 @@ type IronDoor struct {
 
 // Model ...
 func (d IronDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top}
+	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top, Kind: "iron"}
 }
 
 // NeighbourUpdateTick ...
@@ -45,26 +46,9 @@ func (d IronDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // UseOnBlock handles the directional placing of doors
 func (d IronDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
-	if face != cube.FaceUp {
-		// Doors can only be placed when clicking the top face.
-		return false
-	}
-	below := pos
-	pos = pos.Side(cube.FaceUp)
-	if !replaceableWith(tx, pos, d) || !replaceableWith(tx, pos.Side(cube.FaceUp), d) {
-		return false
-	}
-	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
-		return false
-	}
-	d.Facing = user.Rotation().Direction()
-	d.Right = doorHingeRight(tx, pos, d.Facing)
-
-	ctx.IgnoreBBox = true
-	place(tx, pos, d, user, ctx)
-	place(tx, pos.Side(cube.FaceUp), IronDoor{Facing: d.Facing, Top: true, Right: d.Right}, user, ctx)
-	ctx.CountSub = 1
-	return placed(ctx)
+	return placeDoor(pos, face, tx, user, ctx, d, func(facing cube.Direction, right bool) (lower, upper world.Block) {
+		return IronDoor{Facing: facing, Right: right}, IronDoor{Facing: facing, Right: right, Top: true}
+	})
 }
 
 // BreakInfo ...
