@@ -215,6 +215,8 @@ func init() {
 	registerAll(allLooms())
 	registerAll(allMelonStems())
 	registerAll(allMuddyMangroveRoots())
+	registerAll(allMushroomBlocks())
+	registerAll(allMushrooms())
 	registerAll(allNetherBricks())
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
@@ -367,6 +369,8 @@ func init() {
 	world.RegisterItem(MossCarpet{})
 	world.RegisterItem(MudBricks{})
 	world.RegisterItem(MuddyMangroveRoots{})
+	world.RegisterItem(Mushroom{Red: true})
+	world.RegisterItem(Mushroom{})
 	world.RegisterItem(Mud{})
 	world.RegisterItem(NetherBrickFence{})
 	world.RegisterItem(NetherGoldOre{})
@@ -536,6 +540,9 @@ func init() {
 	}
 	for _, s := range SkullTypes() {
 		world.RegisterItem(Skull{Type: s})
+	}
+	for _, t := range MushroomBlockTypes() {
+		world.RegisterItem(MushroomBlock{Type: t, Bits: itemMushroomBits})
 	}
 	for _, t := range SlabBlocks() {
 		world.RegisterItem(Slab{Block: t})
