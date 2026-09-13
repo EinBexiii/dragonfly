@@ -15,6 +15,8 @@ type StainedGlassPane struct {
 
 	// Colour specifies the colour of the block.
 	Colour item.Colour
+	// Hardened specifies if the pane is the hardened variant, which is only obtainable through commands.
+	Hardened bool
 }
 
 // SideClosed ...
@@ -29,19 +31,26 @@ func (p StainedGlassPane) BreakInfo() BreakInfo {
 
 // EncodeItem ...
 func (p StainedGlassPane) EncodeItem() (name string, meta int16) {
+	if p.Hardened {
+		return "minecraft:hard_" + p.Colour.String() + "_stained_glass_pane", 0
+	}
 	return "minecraft:" + p.Colour.String() + "_stained_glass_pane", 0
 }
 
 // EncodeBlock ...
 func (p StainedGlassPane) EncodeBlock() (name string, properties map[string]any) {
+	if p.Hardened {
+		return "minecraft:hard_" + p.Colour.String() + "_stained_glass_pane", nil
+	}
 	return "minecraft:" + p.Colour.String() + "_stained_glass_pane", nil
 }
 
 // allStainedGlassPane returns stained-glass panes with all possible colours.
 func allStainedGlassPane() []world.Block {
-	b := make([]world.Block, 0, 16)
+	b := make([]world.Block, 0, 32)
 	for _, c := range item.Colours() {
 		b = append(b, StainedGlassPane{Colour: c})
+		b = append(b, StainedGlassPane{Colour: c, Hardened: true})
 	}
 	return b
 }
