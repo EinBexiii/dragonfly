@@ -12,6 +12,9 @@ type Thin struct{}
 const (
 	thinHeight = 1
 	thinInset  = 7.0 / 16.0
+	// thinArmEnd is where an arm with a connection on only one side of its axis stops: the middle of the
+	// block, not the far edge of the centre post.
+	thinArmEnd = 0.5
 )
 
 // BBox returns a slice of physics.BBox that depends on the blocks surrounding the Thin block. Thin blocks can connect
@@ -24,9 +27,9 @@ func (t Thin) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 	if connectWest || connectEast {
 		box := cube.Box(0, 0, 0, 1, thinHeight, 1).Stretch(cube.Z, -thinInset)
 		if !connectWest {
-			box = box.ExtendTowards(cube.FaceWest, -thinInset)
+			box = box.ExtendTowards(cube.FaceWest, -thinArmEnd)
 		} else if !connectEast {
-			box = box.ExtendTowards(cube.FaceEast, -thinInset)
+			box = box.ExtendTowards(cube.FaceEast, -thinArmEnd)
 		}
 		boxes = append(boxes, box)
 	}
@@ -36,9 +39,9 @@ func (t Thin) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 	if connectNorth || connectSouth {
 		box := cube.Box(0, 0, 0, 1, thinHeight, 1).Stretch(cube.X, -thinInset)
 		if !connectNorth {
-			box = box.ExtendTowards(cube.FaceNorth, -thinInset)
+			box = box.ExtendTowards(cube.FaceNorth, -thinArmEnd)
 		} else if !connectSouth {
-			box = box.ExtendTowards(cube.FaceSouth, -thinInset)
+			box = box.ExtendTowards(cube.FaceSouth, -thinArmEnd)
 		}
 		boxes = append(boxes, box)
 	}
