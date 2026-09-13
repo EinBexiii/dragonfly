@@ -34,10 +34,11 @@ func (DaylightDetector) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (d DaylightDetector) EncodeBlock() (string, map[string]any) {
+	properties := map[string]any{"redstone_signal": int32(d.Signal)}
 	if d.Inverted {
-		return "minecraft:daylight_detector_inverted", map[string]any{"redstone_signal": int32(d.Signal)}
+		return "minecraft:daylight_detector_inverted", properties
 	}
-	return "minecraft:daylight_detector", map[string]any{"redstone_signal": int32(d.Signal)}
+	return "minecraft:daylight_detector", properties
 }
 
 // allDaylightDetectors ...

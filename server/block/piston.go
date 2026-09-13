@@ -16,7 +16,9 @@ type (
 
 		// Sticky specifies if the piston is a sticky piston, which pulls blocks back when it retracts.
 		Sticky bool
-		// Facing is the face the piston's head pushes towards.
+		// Facing is Bedrock's facing_direction value as the world stores it. Pistons use their own table
+		// (0=-Y 1=+Y 2=+Z 3=-Z 4=+X 5=-X), whose horizontal values are mirrored against cube.Face, so the
+		// number is never read as a face.
 		Facing cube.Face
 	}
 
@@ -24,7 +26,7 @@ type (
 	PistonArm struct {
 		// Sticky specifies if the arm belongs to a sticky piston.
 		Sticky bool
-		// Facing is the face the arm points towards.
+		// Facing is the piston's facing_direction value, with the same table as Piston.Facing.
 		Facing cube.Face
 	}
 )
@@ -54,18 +56,20 @@ func (p Piston) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (p Piston) EncodeBlock() (string, map[string]any) {
+	properties := map[string]any{"facing_direction": int32(p.Facing)}
 	if p.Sticky {
-		return "minecraft:sticky_piston", map[string]any{"facing_direction": int32(p.Facing)}
+		return "minecraft:sticky_piston", properties
 	}
-	return "minecraft:piston", map[string]any{"facing_direction": int32(p.Facing)}
+	return "minecraft:piston", properties
 }
 
 // EncodeBlock ...
 func (p PistonArm) EncodeBlock() (string, map[string]any) {
+	properties := map[string]any{"facing_direction": int32(p.Facing)}
 	if p.Sticky {
-		return "minecraft:sticky_piston_arm_collision", map[string]any{"facing_direction": int32(p.Facing)}
+		return "minecraft:sticky_piston_arm_collision", properties
 	}
-	return "minecraft:piston_arm_collision", map[string]any{"facing_direction": int32(p.Facing)}
+	return "minecraft:piston_arm_collision", properties
 }
 
 // allPistons ...
