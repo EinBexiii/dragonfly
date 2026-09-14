@@ -228,6 +228,7 @@ func init() {
 	registerAll(allRedstoneWires())
 	registerAll(allSandstones())
 	registerAll(allSeaPickles())
+	registerAll(allShelves())
 	registerAll(allSigns())
 	registerAll(allSkulls())
 	registerAll(allSlabs())

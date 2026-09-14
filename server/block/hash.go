@@ -183,6 +183,7 @@ const (
 	hashSandstone
 	hashSeaLantern
 	hashSeaPickle
+	hashShelf
 	hashShortGrass
 	hashShroomlight
 	hashShulkerBox
@@ -947,6 +948,10 @@ func (SeaLantern) Hash() (uint64, uint64) {
 
 func (s SeaPickle) Hash() (uint64, uint64) {
 	return hashSeaPickle, uint64(s.AdditionalCount) | uint64(boolByte(s.Dead))<<8
+}
+
+func (s Shelf) Hash() (uint64, uint64) {
+	return hashShelf, uint64(s.Wood.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Powered))<<6 | uint64(s.PoweredShelfType)<<7
 }
 
 func (ShortGrass) Hash() (uint64, uint64) {
