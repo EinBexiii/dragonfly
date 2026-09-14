@@ -93,7 +93,6 @@ func (l Ladder) Model() world.BlockModel {
 	// server's box for them has been read; accepting the state must not move a box.
 	return model.Ladder{Facing: l.Facing}
 }
-}
 
 // allLadders ...
 func allLadders() (b []world.Block) {
