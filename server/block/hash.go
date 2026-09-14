@@ -110,6 +110,7 @@ const (
 	hashGrass
 	hashGravel
 	hashGrindstone
+	hashHangingRoots
 	hashHangingSign
 	hashHayBale
 	hashHoneycomb
@@ -142,6 +143,7 @@ const (
 	hashLog
 	hashLoom
 	hashMagma
+	hashMangroveRoots
 	hashMelon
 	hashMelonSeeds
 	hashMossCarpet
@@ -675,6 +677,10 @@ func (g Grindstone) Hash() (uint64, uint64) {
 	return hashGrindstone, uint64(g.Attach.Uint8()) | uint64(g.Facing)<<2
 }
 
+func (HangingRoots) Hash() (uint64, uint64) {
+	return hashHangingRoots, 0
+}
+
 func (s HangingSign) Hash() (uint64, uint64) {
 	return hashHangingSign, uint64(s.Wood.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Attached))<<7 | uint64(boolByte(s.Hanging))<<8 | uint64(s.GroundDirection)<<9
 }
@@ -801,6 +807,10 @@ func (l Loom) Hash() (uint64, uint64) {
 
 func (Magma) Hash() (uint64, uint64) {
 	return hashMagma, 0
+}
+
+func (MangroveRoots) Hash() (uint64, uint64) {
+	return hashMangroveRoots, 0
 }
 
 func (Melon) Hash() (uint64, uint64) {
