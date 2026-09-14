@@ -576,6 +576,11 @@ func init() {
 	for _, c := range item.OptionalColours() {
 		world.RegisterItem(ShulkerBox{Colour: c})
 	}
+
+	// The vanilla creative inventory resolves its entries by registered item name, so a
+	// partial block the fork has but never registered as an item cannot appear there.
+	world.RegisterItem(Cauldron{})
+	world.RegisterItem(IronTrapdoor{})
 }
 
 func registerAll(blocks []world.Block) {

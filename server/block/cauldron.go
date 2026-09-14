@@ -51,6 +51,12 @@ func (c Cauldron) EncodeBlock() (string, map[string]any) {
 	return "minecraft:cauldron", map[string]any{"cauldron_liquid": c.Liquid.String(), "fill_level": int32(c.Level)}
 }
 
+// EncodeItem ...
+func (c Cauldron) EncodeItem() (name string, meta int16) {
+	name, _ = c.EncodeBlock()
+	return name, 0
+}
+
 // allCauldrons ...
 func allCauldrons() (cauldrons []world.Block) {
 	for _, liquid := range []CauldronLiquid{CauldronWater, CauldronLava, CauldronPowderSnow} {
