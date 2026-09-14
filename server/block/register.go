@@ -163,6 +163,7 @@ func init() {
 	registerAll(allBarrels())
 	registerAll(allBasalt())
 	registerAll(allBeds())
+	registerAll(allBells())
 	registerAll(allBeetroot())
 	registerAll(allBlackstone())
 	registerAll(allBlastFurnaces())

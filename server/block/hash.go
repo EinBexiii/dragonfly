@@ -22,6 +22,7 @@ const (
 	hashBed
 	hashBedrock
 	hashBeetrootSeeds
+	hashBell
 	hashBlackstone
 	hashBlastFurnace
 	hashBlueIce
@@ -304,6 +305,10 @@ func (b Bedrock) Hash() (uint64, uint64) {
 
 func (b BeetrootSeeds) Hash() (uint64, uint64) {
 	return hashBeetrootSeeds, uint64(b.Growth)
+}
+
+func (b Bell) Hash() (uint64, uint64) {
+	return hashBell, uint64(b.Attachment.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Toggled))<<4
 }
 
 func (b Blackstone) Hash() (uint64, uint64) {
