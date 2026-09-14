@@ -167,6 +167,8 @@ const (
 	hashPackedMud
 	hashPaleMossCarpet
 	hashPinkPetals
+	hashPitcherCrop
+	hashPitcherPlant
 	hashPlanks
 	hashPodzol
 	hashPointedDripstone
@@ -904,6 +906,14 @@ func (p PaleMossCarpet) Hash() (uint64, uint64) {
 
 func (p PinkPetals) Hash() (uint64, uint64) {
 	return hashPinkPetals, uint64(p.AdditionalCount) | uint64(p.Facing)<<8
+}
+
+func (p PitcherCrop) Hash() (uint64, uint64) {
+	return hashPitcherCrop, uint64(p.Growth) | uint64(boolByte(p.UpperPart))<<8
+}
+
+func (p PitcherPlant) Hash() (uint64, uint64) {
+	return hashPitcherPlant, uint64(boolByte(p.UpperPart))
 }
 
 func (p Planks) Hash() (uint64, uint64) {

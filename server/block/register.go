@@ -229,6 +229,7 @@ func init() {
 	registerAll(allNetherWart())
 	registerAll(allPaleMossCarpets())
 	registerAll(allPinkPetals())
+	registerAll(allPitcherPlants())
 	registerAll(allPlanks())
 	registerAll(allPointedDripstone())
 	registerAll(allPotato())
