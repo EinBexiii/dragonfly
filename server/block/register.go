@@ -586,6 +586,25 @@ func init() {
 	for _, c := range item.OptionalColours() {
 		world.RegisterItem(ShulkerBox{Colour: c})
 	}
+
+	// The vanilla creative inventory resolves its entries by registered item name, so every
+	// low block the fork has needs an item of its own.
+	world.RegisterItem(ActivatorRail{})
+	world.RegisterItem(DetectorRail{})
+	world.RegisterItem(PoweredRail{})
+	world.RegisterItem(Rail{})
+	world.RegisterItem(SnowLayer{Layers: 1})
+	for _, blackstone := range []bool{false, true} {
+		world.RegisterItem(StoneButton{Blackstone: blackstone})
+		world.RegisterItem(StonePressurePlate{Blackstone: blackstone})
+	}
+	for _, heavy := range []bool{false, true} {
+		world.RegisterItem(WeightedPressurePlate{Heavy: heavy})
+	}
+	for _, w := range WoodTypes() {
+		world.RegisterItem(WoodButton{Wood: w})
+		world.RegisterItem(WoodPressurePlate{Wood: w})
+	}
 }
 
 func registerAll(blocks []world.Block) {

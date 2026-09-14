@@ -22,6 +22,12 @@ func (b WoodPressurePlate) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + name + "_pressure_plate", map[string]any{"redstone_signal": int32(b.Power)}
 }
 
+// EncodeItem ...
+func (b WoodPressurePlate) EncodeItem() (name string, meta int16) {
+	name, _ = b.EncodeBlock()
+	return name, 0
+}
+
 // allWoodPressurePlates ...
 func allWoodPressurePlates() (blocks []world.Block) {
 	for _, material := range WoodTypes() {

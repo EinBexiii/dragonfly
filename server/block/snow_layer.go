@@ -25,6 +25,12 @@ func (s SnowLayer) EncodeBlock() (string, map[string]any) {
 	return "minecraft:snow_layer", map[string]any{"height": int32(s.Layers - 1), "covered_bit": boolByte(s.Covered)}
 }
 
+// EncodeItem ...
+func (s SnowLayer) EncodeItem() (name string, meta int16) {
+	name, _ = s.EncodeBlock()
+	return name, 0
+}
+
 // allSnowLayers ...
 func allSnowLayers() (layers []world.Block) {
 	for n := 1; n <= 8; n++ {

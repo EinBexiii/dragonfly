@@ -27,6 +27,12 @@ func (b WoodButton) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + name + "_button", map[string]any{"facing_direction": int32(b.Facing), "button_pressed_bit": boolByte(b.Pressed)}
 }
 
+// EncodeItem ...
+func (b WoodButton) EncodeItem() (name string, meta int16) {
+	name, _ = b.EncodeBlock()
+	return name, 0
+}
+
 // allWoodButtons ...
 func allWoodButtons() (blocks []world.Block) {
 	for _, material := range WoodTypes() {
