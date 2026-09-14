@@ -317,7 +317,7 @@ func (BlueIce) Hash() (uint64, uint64) {
 }
 
 func (b Bone) Hash() (uint64, uint64) {
-	return hashBone, uint64(b.Axis)
+	return hashBone, uint64(b.Axis) | uint64(b.Deprecated)<<2
 }
 
 func (Bookshelf) Hash() (uint64, uint64) {
@@ -629,7 +629,7 @@ func (g Grindstone) Hash() (uint64, uint64) {
 }
 
 func (h HayBale) Hash() (uint64, uint64) {
-	return hashHayBale, uint64(h.Axis)
+	return hashHayBale, uint64(h.Axis) | uint64(h.Deprecated)<<2
 }
 
 func (Honeycomb) Hash() (uint64, uint64) {

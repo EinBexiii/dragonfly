@@ -143,6 +143,13 @@ func facingDirections() []cube.Direction {
 	return append(cube.Directions(), unknownDirection, unknownUpDirection)
 }
 
+// deprecatedValues returns the four values of the deprecated property that Bedrock stores on bone and hay
+// blocks. The property is a leftover the game no longer acts on, but it is part of the saved state, so the
+// blocks that carry it keep a field for it purely to read such a world back.
+func deprecatedValues() []int {
+	return []int{0, 1, 2, 3}
+}
+
 // encodeFacingDirection returns the facing_direction value Bedrock stores for direction d.
 func encodeFacingDirection(d cube.Direction) int32 {
 	switch d {

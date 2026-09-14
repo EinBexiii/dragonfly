@@ -15,6 +15,9 @@ type HayBale struct {
 
 	// Axis is the axis which the hay bale block faces.
 	Axis cube.Axis
+	// Deprecated is the unused deprecated property Bedrock stores, kept only so the state round-trips. See
+	// deprecatedValues.
+	Deprecated int
 }
 
 // Instrument ...
@@ -63,13 +66,15 @@ func (HayBale) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (h HayBale) EncodeBlock() (name string, properties map[string]interface{}) {
-	return "minecraft:hay_block", map[string]interface{}{"pillar_axis": h.Axis.String(), "deprecated": int32(0)}
+	return "minecraft:hay_block", map[string]interface{}{"pillar_axis": h.Axis.String(), "deprecated": int32(h.Deprecated)}
 }
 
 // allHayBales ...
 func allHayBales() (haybale []world.Block) {
 	for _, a := range cube.Axes() {
-		haybale = append(haybale, HayBale{Axis: a})
+		for _, d := range deprecatedValues() {
+			haybale = append(haybale, HayBale{Axis: a, Deprecated: d})
+		}
 	}
 	return
 }
