@@ -11,3 +11,8 @@ type FrogSpawn struct {
 func (FrogSpawn) EncodeBlock() (string, map[string]any) {
 	return "minecraft:frog_spawn", nil
 }
+
+// EncodeItem ...
+func (f FrogSpawn) EncodeItem() (name string, meta int16) {
+	return blockItemName(f), 0
+}

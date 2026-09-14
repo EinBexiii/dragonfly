@@ -12,6 +12,11 @@ func (MangroveRoots) EncodeBlock() (string, map[string]any) {
 	return "minecraft:mangrove_roots", nil
 }
 
+// EncodeItem ...
+func (m MangroveRoots) EncodeItem() (name string, meta int16) {
+	return blockItemName(m), 0
+}
+
 // HangingRoots are the roots that hang from the ceiling of a lush cave. They have no collision: batch B section 10
 // finds the dimensions of their constructor box bypassed by the empty collision getter.
 type HangingRoots struct {
@@ -22,4 +27,9 @@ type HangingRoots struct {
 // EncodeBlock ...
 func (HangingRoots) EncodeBlock() (string, map[string]any) {
 	return "minecraft:hanging_roots", nil
+}
+
+// EncodeItem ...
+func (h HangingRoots) EncodeItem() (name string, meta int16) {
+	return blockItemName(h), 0
 }

@@ -25,6 +25,11 @@ func (c CoralFan) EncodeBlock() (string, map[string]any) {
 	return coralName(c.Type, c.Dead, "coral_fan"), map[string]any{"coral_fan_direction": int32(c.Direction)}
 }
 
+// EncodeItem ...
+func (c CoralFan) EncodeItem() (name string, meta int16) {
+	return blockItemName(c), 0
+}
+
 // CoralWallFan is a fan of coral growing on the side of a block.
 type CoralWallFan struct {
 	empty
@@ -42,6 +47,11 @@ type CoralWallFan struct {
 // EncodeBlock ...
 func (c CoralWallFan) EncodeBlock() (string, map[string]any) {
 	return coralName(c.Type, c.Dead, "coral_wall_fan"), map[string]any{"coral_direction": int32(c.Direction)}
+}
+
+// EncodeItem ...
+func (c CoralWallFan) EncodeItem() (name string, meta int16) {
+	return blockItemName(c), 0
 }
 
 // coralName returns the block name of a coral block of the type and suffix passed, dead or alive.

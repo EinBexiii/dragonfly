@@ -213,6 +213,13 @@ func horizontalDirection(d cube.Direction) cube.Direction {
 	panic("invalid direction")
 }
 
+// blockItemName returns the name of the item a block that is named after itself encodes to. Every wave 3 block has an
+// item carrying exactly its block name, so deriving the one from the other keeps a single spelling of each name.
+func blockItemName(b world.Block) string {
+	name, _ := b.EncodeBlock()
+	return name
+}
+
 // placed checks if an item was placed with the use context passed.
 func placed(ctx *item.UseContext) bool {
 	return ctx.CountSub > 0

@@ -38,6 +38,11 @@ func (s HangingSign) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (s HangingSign) EncodeItem() (name string, meta int16) {
+	return blockItemName(s), 0
+}
+
 // EncodeNBT ...
 func (s HangingSign) EncodeNBT() map[string]any {
 	return s.storedNBT("HangingSign")

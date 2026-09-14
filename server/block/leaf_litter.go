@@ -26,6 +26,11 @@ func (l LeafLitter) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (l LeafLitter) EncodeItem() (name string, meta int16) {
+	return blockItemName(l), 0
+}
+
 // allLeafLitter returns all leaf litter states.
 func allLeafLitter() (litter []world.Block) {
 	for count := range 8 {

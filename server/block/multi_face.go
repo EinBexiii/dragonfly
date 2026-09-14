@@ -22,6 +22,11 @@ func (m MultiFace) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + m.Type.String(), map[string]any{"multi_face_direction_bits": int32(m.Faces)}
 }
 
+// EncodeItem ...
+func (m MultiFace) EncodeItem() (name string, meta int16) {
+	return blockItemName(m), 0
+}
+
 // allMultiFace returns all sculk vein, glow lichen and resin clump states.
 func allMultiFace() (growths []world.Block) {
 	for _, t := range MultiFaceTypes() {

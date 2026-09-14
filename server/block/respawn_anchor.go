@@ -19,6 +19,11 @@ func (r RespawnAnchor) EncodeBlock() (string, map[string]any) {
 	return "minecraft:respawn_anchor", map[string]any{"respawn_anchor_charge": int32(r.Charge)}
 }
 
+// EncodeItem ...
+func (r RespawnAnchor) EncodeItem() (name string, meta int16) {
+	return blockItemName(r), 0
+}
+
 // allRespawnAnchors returns all respawn anchor states.
 func allRespawnAnchors() (anchors []world.Block) {
 	for charge := range 5 {

@@ -33,6 +33,11 @@ func (b Bell) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (b Bell) EncodeItem() (name string, meta int16) {
+	return blockItemName(b), 0
+}
+
 // EncodeNBT ...
 func (b Bell) EncodeNBT() map[string]any {
 	return b.storedNBT("Bell")

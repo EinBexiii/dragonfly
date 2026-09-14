@@ -33,6 +33,11 @@ func (d BigDripleaf) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (d BigDripleaf) EncodeItem() (name string, meta int16) {
+	return blockItemName(d), 0
+}
+
 // SmallDripleaf is the two block tall plant that a BigDripleaf grows from.
 type SmallDripleaf struct {
 	transparent
@@ -50,6 +55,11 @@ func (d SmallDripleaf) EncodeBlock() (string, map[string]any) {
 		"minecraft:cardinal_direction": d.Facing.String(),
 		"upper_block_bit":              d.UpperPart,
 	}
+}
+
+// EncodeItem ...
+func (d SmallDripleaf) EncodeItem() (name string, meta int16) {
+	return blockItemName(d), 0
 }
 
 // allDripleaves returns all big and small dripleaf states.

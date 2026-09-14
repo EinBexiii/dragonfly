@@ -27,6 +27,11 @@ func (a AmethystCluster) EncodeBlock() (string, map[string]any) {
 	return "minecraft:" + a.Size.String(), map[string]any{"minecraft:block_face": a.Facing.String()}
 }
 
+// EncodeItem ...
+func (a AmethystCluster) EncodeItem() (name string, meta int16) {
+	return blockItemName(a), 0
+}
+
 // allAmethystClusters returns all amethyst bud and cluster states.
 func allAmethystClusters() (clusters []world.Block) {
 	for _, size := range AmethystClusterSizes() {

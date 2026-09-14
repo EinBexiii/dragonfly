@@ -28,6 +28,11 @@ func (t TurtleEgg) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (t TurtleEgg) EncodeItem() (name string, meta int16) {
+	return blockItemName(t), 0
+}
+
 // turtleEggCounts holds the turtle_egg_count state value for a clutch of one to four eggs.
 var turtleEggCounts = [...]string{"one_egg", "two_egg", "three_egg", "four_egg"}
 
@@ -47,6 +52,11 @@ func (s SnifferEgg) Model() world.BlockModel {
 // EncodeBlock ...
 func (s SnifferEgg) EncodeBlock() (string, map[string]any) {
 	return "minecraft:sniffer_egg", map[string]any{"cracked_state": s.Cracks.String()}
+}
+
+// EncodeItem ...
+func (s SnifferEgg) EncodeItem() (name string, meta int16) {
+	return blockItemName(s), 0
 }
 
 // allEggs returns all turtle egg and sniffer egg states.

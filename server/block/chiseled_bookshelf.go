@@ -26,6 +26,11 @@ func (c ChiseledBookshelf) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (c ChiseledBookshelf) EncodeItem() (name string, meta int16) {
+	return blockItemName(c), 0
+}
+
 // EncodeNBT ...
 func (c ChiseledBookshelf) EncodeNBT() map[string]any {
 	return c.storedNBT("ChiseledBookshelf")

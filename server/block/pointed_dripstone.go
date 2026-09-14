@@ -28,6 +28,11 @@ func (d PointedDripstone) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (d PointedDripstone) EncodeItem() (name string, meta int16) {
+	return blockItemName(d), 0
+}
+
 // allPointedDripstone returns all pointed dripstone states.
 func allPointedDripstone() (dripstone []world.Block) {
 	for _, t := range DripstoneThicknesses() {

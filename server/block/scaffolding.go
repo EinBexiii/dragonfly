@@ -29,6 +29,11 @@ func (s Scaffolding) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (s Scaffolding) EncodeItem() (name string, meta int16) {
+	return blockItemName(s), 0
+}
+
 // allScaffolding returns all scaffolding states.
 func allScaffolding() (scaffolding []world.Block) {
 	for stability := range 8 {

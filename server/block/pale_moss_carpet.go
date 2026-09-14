@@ -36,6 +36,11 @@ func (p PaleMossCarpet) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (p PaleMossCarpet) EncodeItem() (name string, meta int16) {
+	return blockItemName(p), 0
+}
+
 // allPaleMossCarpets returns all pale moss carpet states.
 func allPaleMossCarpets() (carpets []world.Block) {
 	for _, upper := range []bool{false, true} {

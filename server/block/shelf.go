@@ -36,6 +36,11 @@ func (s Shelf) EncodeBlock() (string, map[string]any) {
 	}
 }
 
+// EncodeItem ...
+func (s Shelf) EncodeItem() (name string, meta int16) {
+	return blockItemName(s), 0
+}
+
 // EncodeNBT ...
 func (s Shelf) EncodeNBT() map[string]any {
 	return s.storedNBT("Shelf")

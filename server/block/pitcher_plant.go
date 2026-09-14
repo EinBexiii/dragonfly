@@ -20,6 +20,11 @@ func (p PitcherPlant) EncodeBlock() (string, map[string]any) {
 	return "minecraft:pitcher_plant", map[string]any{"upper_block_bit": p.UpperPart}
 }
 
+// EncodeItem ...
+func (p PitcherPlant) EncodeItem() (name string, meta int16) {
+	return blockItemName(p), 0
+}
+
 // PitcherCrop is the crop a pitcher pod grows into before it becomes a PitcherPlant.
 type PitcherCrop struct {
 	transparent
@@ -41,6 +46,11 @@ func (p PitcherCrop) EncodeBlock() (string, map[string]any) {
 		"growth":          int32(p.Growth),
 		"upper_block_bit": p.UpperPart,
 	}
+}
+
+// EncodeItem ...
+func (p PitcherCrop) EncodeItem() (name string, meta int16) {
+	return blockItemName(p), 0
 }
 
 // allPitcherPlants returns all pitcher plant and pitcher crop states.
