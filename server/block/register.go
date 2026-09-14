@@ -257,6 +257,7 @@ func init() {
 	registerAll(allDecoratedPots())
 	registerAll(allCopper())
 	registerAll(allCopperBars())
+	registerAll(allCopperBulbs())
 	registerAll(allCopperChains())
 	registerAll(allCopperDoors())
 	registerAll(allCopperGolemStatues())
