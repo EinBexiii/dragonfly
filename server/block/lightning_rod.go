@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // LightningRod is a block that attracts lightning strikes to the point it is placed at.
@@ -26,6 +28,19 @@ type LightningRod struct {
 // Model ...
 func (l LightningRod) Model() world.BlockModel {
 	return model.LightningRod{Axis: l.Facing.Axis()}
+}
+
+// UseOnBlock points the rod out of the face of the block it is placed against, so one placed on the ground stands
+// upright and one placed against a wall sticks out of it.
+func (l LightningRod) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, face, used := firstReplaceable(tx, pos, face, l)
+	if !used {
+		return false
+	}
+	l.Facing, l.Powered = face, false
+
+	place(tx, pos, l, user, ctx)
+	return placed(ctx)
 }
 
 // EncodeItem ...

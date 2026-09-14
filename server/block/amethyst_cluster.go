@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // AmethystCluster is a bud growing out of budding amethyst, in one of four stages of growth.
@@ -19,6 +21,33 @@ type AmethystCluster struct {
 // Model ...
 func (a AmethystCluster) Model() world.BlockModel {
 	return model.AmethystCluster{Height: a.Size.Height(), Inset: a.Size.Inset(), Facing: a.Facing}
+}
+
+// UseOnBlock grows the cluster out of the face clicked, so it points away from the block carrying it.
+func (a AmethystCluster) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, face, used := firstReplaceable(tx, pos, face, a)
+	if !used {
+		return false
+	}
+	a.Facing = face
+	if !a.canSurvive(pos, tx) {
+		return false
+	}
+
+	place(tx, pos, a, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (a AmethystCluster) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !a.canSurvive(pos, tx) {
+		breakBlockNoDrops(a, pos, tx)
+	}
+}
+
+// canSurvive checks if the block the cluster grows out of is still there.
+func (a AmethystCluster) canSurvive(pos cube.Pos, tx *world.Tx) bool {
+	return faceSolid(tx, pos.Side(a.Facing.Opposite()), a.Facing)
 }
 
 // EncodeBlock ...

@@ -1,8 +1,11 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // PointedDripstone is one segment of a stalactite or stalagmite growing from a Dripstone block.
@@ -18,6 +21,42 @@ type PointedDripstone struct {
 // Model ...
 func (d PointedDripstone) Model() world.BlockModel {
 	return model.PointedDripstone{Thickness: model.DripstoneThickness(d.Thickness.Uint8()), Hanging: d.Hanging}
+}
+
+// UseOnBlock hangs the spike from the block above when it is placed under one, and stands it on the block below
+// otherwise. A single segment is the tip of its spike.
+func (d PointedDripstone) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, face, used := firstReplaceable(tx, pos, face, d)
+	if !used {
+		return false
+	}
+	d.Thickness, d.Hanging = TipDripstoneThickness(), face == cube.FaceDown
+	if !d.canSurvive(pos, tx) {
+		return false
+	}
+
+	place(tx, pos, d, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (d PointedDripstone) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !d.canSurvive(pos, tx) {
+		breakBlockNoDrops(d, pos, tx)
+	}
+}
+
+// canSurvive checks if the spike still grows out of a block or out of the segment before it.
+func (d PointedDripstone) canSurvive(pos cube.Pos, tx *world.Tx) bool {
+	grownFrom := cube.FaceDown
+	if d.Hanging {
+		grownFrom = cube.FaceUp
+	}
+	side := pos.Side(grownFrom)
+	if other, ok := tx.Block(side).(PointedDripstone); ok {
+		return other.Hanging == d.Hanging
+	}
+	return faceSolid(tx, side, grownFrom.Opposite())
 }
 
 // EncodeBlock ...
