@@ -157,6 +157,7 @@ func init() {
 
 	registerAll(allAnvils())
 	registerAll(allBambooBlocks())
+	registerAll(allAmethystClusters())
 	registerAll(allBamboos())
 	registerAll(allBambooSaplings())
 	registerAll(allBanners())

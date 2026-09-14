@@ -7,6 +7,7 @@ import "github.com/df-mc/dragonfly/server/world"
 const (
 	hashAir = iota
 	hashAmethyst
+	hashAmethystCluster
 	hashAncientDebris
 	hashAndesite
 	hashAnvil
@@ -248,6 +249,10 @@ func (Air) Hash() (uint64, uint64) {
 
 func (Amethyst) Hash() (uint64, uint64) {
 	return hashAmethyst, 0
+}
+
+func (a AmethystCluster) Hash() (uint64, uint64) {
+	return hashAmethystCluster, uint64(a.Size.Uint8()) | uint64(a.Facing)<<2
 }
 
 func (AncientDebris) Hash() (uint64, uint64) {
