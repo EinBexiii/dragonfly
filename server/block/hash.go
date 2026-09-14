@@ -40,6 +40,7 @@ const (
 	hashCarpet
 	hashCarrot
 	hashChest
+	hashChiseledBookshelf
 	hashChiseledQuartz
 	hashCinnabar
 	hashCinnabarBricks
@@ -146,6 +147,7 @@ const (
 	hashMud
 	hashMudBricks
 	hashMuddyMangroveRoots
+	hashMultiFace
 	hashNetherBrickFence
 	hashNetherBricks
 	hashNetherGoldOre
@@ -389,6 +391,10 @@ func (c Carrot) Hash() (uint64, uint64) {
 
 func (c Chest) Hash() (uint64, uint64) {
 	return hashChest, uint64(c.Facing)
+}
+
+func (c ChiseledBookshelf) Hash() (uint64, uint64) {
+	return hashChiseledBookshelf, uint64(c.BooksStored) | uint64(c.Facing)<<8
 }
 
 func (ChiseledQuartz) Hash() (uint64, uint64) {
@@ -813,6 +819,10 @@ func (MudBricks) Hash() (uint64, uint64) {
 
 func (m MuddyMangroveRoots) Hash() (uint64, uint64) {
 	return hashMuddyMangroveRoots, uint64(m.Axis)
+}
+
+func (m MultiFace) Hash() (uint64, uint64) {
+	return hashMultiFace, uint64(m.Type.Uint8()) | uint64(m.Faces)<<2
 }
 
 func (NetherBrickFence) Hash() (uint64, uint64) {
