@@ -642,6 +642,9 @@ func init() {
 	// partial block the fork has but never registered as an item cannot appear there.
 	world.RegisterItem(Cauldron{})
 	world.RegisterItem(IronTrapdoor{})
+	// The vanilla creative inventory resolves its entries by registered item name, and the
+	// iron door encodes an item but was never registered as one.
+	world.RegisterItem(IronDoor{})
 }
 
 func registerAll(blocks []world.Block) {
