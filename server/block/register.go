@@ -132,6 +132,7 @@ func init() {
 	world.RegisterBlock(Sulfur{Chiseled: true})
 	world.RegisterBlock(SulfurBricks{})
 	world.RegisterBlock(PolishedSulfur{})
+	world.RegisterBlock(TNT{Unstable: true})
 	world.RegisterBlock(TNT{})
 	world.RegisterBlock(Terracotta{})
 	world.RegisterBlock(TintedGlass{})

@@ -1048,8 +1048,8 @@ func (SulfurBricks) Hash() (uint64, uint64) {
 	return hashSulfurBricks, 0
 }
 
-func (TNT) Hash() (uint64, uint64) {
-	return hashTNT, 0
+func (t TNT) Hash() (uint64, uint64) {
+	return hashTNT, uint64(boolByte(t.Unstable))
 }
 
 func (Terracotta) Hash() (uint64, uint64) {
