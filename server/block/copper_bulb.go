@@ -1,6 +1,7 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 )
 
@@ -21,6 +22,36 @@ type CopperBulb struct {
 	Lit bool
 	// Powered specifies if the bulb is currently receiving a redstone signal.
 	Powered bool
+}
+
+// RedstonePowerUpdate toggles the bulb on the rising edge of the signal reaching it: a powered bulb lights, and
+// stays lit until it is powered a second time.
+func (c CopperBulb) RedstonePowerUpdate(_ cube.Pos, _ *world.Tx, power int) (world.Block, bool) {
+	powered := power > 0
+	if powered == c.Powered {
+		return c, false
+	}
+	if c.Powered = powered; powered {
+		c.Lit = !c.Lit
+	}
+	return c, true
+}
+
+// LightEmissionLevel returns the light a lit bulb gives off, which its oxidation dims. The levels are the vanilla
+// ones; the BDS corpus was read for collision, not for light.
+func (c CopperBulb) LightEmissionLevel() uint8 {
+	if !c.Lit {
+		return 0
+	}
+	switch c.Oxidation {
+	case UnoxidisedOxidation():
+		return 15
+	case ExposedOxidation():
+		return 12
+	case WeatheredOxidation():
+		return 8
+	}
+	return 4
 }
 
 // EncodeItem ...
