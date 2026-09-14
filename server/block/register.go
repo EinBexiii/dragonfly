@@ -235,8 +235,6 @@ func init() {
 	registerAll(allPinkPetals())
 	registerAll(allPistons())
 	registerAll(allPlanks())
-	registerAll(allPoplarPressurePlates())
-	registerAll(allPoplarButtons())
 	registerAll(allPotato())
 	registerAll(allPoweredRails())
 	registerAll(allPrismarine())
