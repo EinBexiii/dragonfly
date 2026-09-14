@@ -293,7 +293,7 @@ func (Beacon) Hash() (uint64, uint64) {
 }
 
 func (b Bed) Hash() (uint64, uint64) {
-	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2
+	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2 | uint64(boolByte(b.Occupied))<<3
 }
 
 func (b Bedrock) Hash() (uint64, uint64) {
