@@ -220,6 +220,7 @@ func init() {
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
 	registerAll(allPlanks())
+	registerAll(allPointedDripstone())
 	registerAll(allPotato())
 	registerAll(allPrismarine())
 	registerAll(allPumpkinStems())

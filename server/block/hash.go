@@ -157,6 +157,7 @@ const (
 	hashPinkPetals
 	hashPlanks
 	hashPodzol
+	hashPointedDripstone
 	hashPolishedBlackstoneBrick
 	hashPolishedCinnabar
 	hashPolishedSulfur
@@ -847,6 +848,10 @@ func (p Planks) Hash() (uint64, uint64) {
 
 func (Podzol) Hash() (uint64, uint64) {
 	return hashPodzol, 0
+}
+
+func (d PointedDripstone) Hash() (uint64, uint64) {
+	return hashPointedDripstone, uint64(d.Thickness.Uint8()) | uint64(boolByte(d.Hanging))<<3
 }
 
 func (b PolishedBlackstoneBrick) Hash() (uint64, uint64) {
