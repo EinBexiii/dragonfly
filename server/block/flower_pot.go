@@ -24,6 +24,12 @@ func (f FlowerPot) EncodeBlock() (string, map[string]any) {
 	return "minecraft:flower_pot", map[string]any{"update_bit": boolByte(f.Update)}
 }
 
+// EncodeItem ...
+func (f FlowerPot) EncodeItem() (name string, meta int16) {
+	name, _ = f.EncodeBlock()
+	return name, 0
+}
+
 // allFlowerPots ...
 func allFlowerPots() []world.Block {
 	return []world.Block{FlowerPot{}, FlowerPot{Update: true}}

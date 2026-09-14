@@ -575,6 +575,10 @@ func init() {
 	for _, c := range item.OptionalColours() {
 		world.RegisterItem(ShulkerBox{Colour: c})
 	}
+
+	// The vanilla creative inventory resolves its entries by registered item name, and the
+	// flower pot existed only as a block state.
+	world.RegisterItem(FlowerPot{})
 }
 
 func registerAll(blocks []world.Block) {
