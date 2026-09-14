@@ -25,6 +25,9 @@ type Lectern struct {
 	Book item.Stack
 	// Page is the page the Lectern is currently on in the book.
 	Page int
+	// Powered is true while the Lectern emits a redstone signal, which the game does for a tick after a page
+	// is turned. Nothing sets it until the TODO above is done, but a world may hold it.
+	Powered bool
 }
 
 // Model ...
@@ -157,7 +160,7 @@ func (Lectern) EncodeItem() (name string, meta int16) {
 func (l Lectern) EncodeBlock() (string, map[string]any) {
 	return "minecraft:lectern", map[string]any{
 		"minecraft:cardinal_direction": l.Facing.String(),
-		"powered_bit":                  uint8(0), // We don't support redstone, anyway.
+		"powered_bit":                  boolByte(l.Powered),
 	}
 }
 
@@ -165,6 +168,7 @@ func (l Lectern) EncodeBlock() (string, map[string]any) {
 func allLecterns() (lecterns []world.Block) {
 	for _, f := range cube.Directions() {
 		lecterns = append(lecterns, Lectern{Facing: f})
+		lecterns = append(lecterns, Lectern{Facing: f, Powered: true})
 	}
 	return
 }
