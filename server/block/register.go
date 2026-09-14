@@ -263,6 +263,7 @@ func init() {
 	registerAll(allCopperGolemStatues())
 	registerAll(allCopperGrates())
 	registerAll(allCopperLanterns())
+	registerAll(allLightningRods())
 	registerAll(allCopperTorches())
 	registerAll(allCopperTrapdoors())
 	registerAll(allShulkerBoxes())

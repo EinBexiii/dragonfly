@@ -134,6 +134,7 @@ const (
 	hashLectern
 	hashLever
 	hashLight
+	hashLightningRod
 	hashLilyPad
 	hashLitPumpkin
 	hashLog
@@ -760,6 +761,10 @@ func (l Lever) Hash() (uint64, uint64) {
 
 func (l Light) Hash() (uint64, uint64) {
 	return hashLight, uint64(l.Level)
+}
+
+func (l LightningRod) Hash() (uint64, uint64) {
+	return hashLightningRod, uint64(l.Oxidation.Uint8()) | uint64(boolByte(l.Waxed))<<2 | uint64(l.Facing)<<3 | uint64(boolByte(l.Powered))<<6
 }
 
 func (LilyPad) Hash() (uint64, uint64) {
