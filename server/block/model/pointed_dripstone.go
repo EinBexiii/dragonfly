@@ -5,8 +5,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// DripstoneThickness is the segment a pointed dripstone block forms in the spike it is part of. Its values are the
-// ones Bedrock uses, so that block.DripstoneThickness converts to it directly.
+// DripstoneThickness is the segment a pointed dripstone block forms in the spike it is part of. These are Bedrock's
+// values and the only definition of them: block.DripstoneThickness derives its ordinals from these constants and
+// converts straight to this type, because model cannot import block.
 type DripstoneThickness uint8
 
 const (

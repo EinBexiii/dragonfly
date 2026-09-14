@@ -1,28 +1,32 @@
 package block
 
-// DripleafTilt represents how far the leaf of a BigDripleaf has tipped over.
+import "github.com/df-mc/dragonfly/server/block/model"
+
+// DripleafTilt represents how far the leaf of a BigDripleaf has tipped over. Its ordinals are Bedrock's, and
+// model.DripleafTilt holds the one definition of them: the constructors below derive from it, so the conversion at
+// the Model() call site cannot drift.
 type DripleafTilt struct {
 	dripleafTilt
 }
 
 // NoneDripleafTilt is a leaf that is not tilted at all.
 func NoneDripleafTilt() DripleafTilt {
-	return DripleafTilt{0}
+	return DripleafTilt{dripleafTilt(model.DripleafTiltNone)}
 }
 
 // UnstableDripleafTilt is a leaf that has just been stepped on and is about to tilt.
 func UnstableDripleafTilt() DripleafTilt {
-	return DripleafTilt{1}
+	return DripleafTilt{dripleafTilt(model.DripleafTiltUnstable)}
 }
 
 // PartialDripleafTilt is a leaf that has tilted halfway down.
 func PartialDripleafTilt() DripleafTilt {
-	return DripleafTilt{2}
+	return DripleafTilt{dripleafTilt(model.DripleafTiltPartial)}
 }
 
 // FullDripleafTilt is a leaf that has tilted all the way down.
 func FullDripleafTilt() DripleafTilt {
-	return DripleafTilt{3}
+	return DripleafTilt{dripleafTilt(model.DripleafTiltFull)}
 }
 
 // DripleafTilts returns all dripleaf tilts.
@@ -39,14 +43,14 @@ func (d dripleafTilt) Uint8() uint8 {
 
 // String ...
 func (d dripleafTilt) String() string {
-	switch d {
-	case 0:
+	switch model.DripleafTilt(d) {
+	case model.DripleafTiltNone:
 		return "none"
-	case 1:
+	case model.DripleafTiltUnstable:
 		return "unstable"
-	case 2:
+	case model.DripleafTiltPartial:
 		return "partial_tilt"
-	case 3:
+	case model.DripleafTiltFull:
 		return "full_tilt"
 	}
 	panic("unknown dripleaf tilt")

@@ -5,8 +5,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// DripleafTilt is how far the leaf of a BigDripleaf has tipped over. Its values are the ones Bedrock uses, so that
-// block.DripleafTilt converts to it directly.
+// DripleafTilt is how far the leaf of a BigDripleaf has tipped over. These are Bedrock's values and the only
+// definition of them: block.DripleafTilt derives its ordinals from these constants and converts straight to this type,
+// because model cannot import block.
 type DripleafTilt uint8
 
 const (

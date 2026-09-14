@@ -5,8 +5,9 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 )
 
-// BellAttachment is the way a Bell is attached to the blocks around it. Its values are the ones Bedrock uses, so that
-// block.BellAttachment converts to it directly.
+// BellAttachment is the way a Bell is attached to the blocks around it. These are Bedrock's values and the only
+// definition of them: block.BellAttachment derives its ordinals from these constants and converts straight to this
+// type, because model cannot import block.
 type BellAttachment uint8
 
 const (

@@ -1,28 +1,32 @@
 package block
 
-// BellAttachment represents the way a Bell is attached to the blocks around it.
+import "github.com/df-mc/dragonfly/server/block/model"
+
+// BellAttachment represents the way a Bell is attached to the blocks around it. Its ordinals are Bedrock's, and
+// model.BellAttachment holds the one definition of them: the constructors below derive from it, so the conversion
+// at the Model() call site cannot drift.
 type BellAttachment struct {
 	bellAttachment
 }
 
 // StandingBellAttachment is a bell standing on the floor.
 func StandingBellAttachment() BellAttachment {
-	return BellAttachment{0}
+	return BellAttachment{bellAttachment(model.BellStanding)}
 }
 
 // HangingBellAttachment is a bell hanging from the block above it.
 func HangingBellAttachment() BellAttachment {
-	return BellAttachment{1}
+	return BellAttachment{bellAttachment(model.BellHanging)}
 }
 
 // SideBellAttachment is a bell attached to the side of a single block.
 func SideBellAttachment() BellAttachment {
-	return BellAttachment{2}
+	return BellAttachment{bellAttachment(model.BellSide)}
 }
 
 // MultipleBellAttachment is a bell suspended between two blocks facing each other.
 func MultipleBellAttachment() BellAttachment {
-	return BellAttachment{3}
+	return BellAttachment{bellAttachment(model.BellMultiple)}
 }
 
 // BellAttachments returns all bell attachments.
@@ -39,14 +43,14 @@ func (b bellAttachment) Uint8() uint8 {
 
 // String ...
 func (b bellAttachment) String() string {
-	switch b {
-	case 0:
+	switch model.BellAttachment(b) {
+	case model.BellStanding:
 		return "standing"
-	case 1:
+	case model.BellHanging:
 		return "hanging"
-	case 2:
+	case model.BellSide:
 		return "side"
-	case 3:
+	case model.BellMultiple:
 		return "multiple"
 	}
 	panic("unknown bell attachment")

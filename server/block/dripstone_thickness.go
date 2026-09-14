@@ -1,33 +1,37 @@
 package block
 
-// DripstoneThickness represents the segment a PointedDripstone block forms in the spike it is part of.
+import "github.com/df-mc/dragonfly/server/block/model"
+
+// DripstoneThickness represents the segment a PointedDripstone block forms in the spike it is part of. Its ordinals
+// are Bedrock's, and model.DripstoneThickness holds the one definition of them: the constructors below derive from
+// it, so the conversion at the Model() call site cannot drift.
 type DripstoneThickness struct {
 	dripstoneThickness
 }
 
 // TipDripstoneThickness is the pointed end of a spike.
 func TipDripstoneThickness() DripstoneThickness {
-	return DripstoneThickness{0}
+	return DripstoneThickness{dripstoneThickness(model.DripstoneTip)}
 }
 
 // FrustumDripstoneThickness is the segment right behind the tip.
 func FrustumDripstoneThickness() DripstoneThickness {
-	return DripstoneThickness{1}
+	return DripstoneThickness{dripstoneThickness(model.DripstoneFrustum)}
 }
 
 // MiddleDripstoneThickness is a segment in the middle of a spike.
 func MiddleDripstoneThickness() DripstoneThickness {
-	return DripstoneThickness{2}
+	return DripstoneThickness{dripstoneThickness(model.DripstoneMiddle)}
 }
 
 // BaseDripstoneThickness is the segment a spike grows from.
 func BaseDripstoneThickness() DripstoneThickness {
-	return DripstoneThickness{3}
+	return DripstoneThickness{dripstoneThickness(model.DripstoneBase)}
 }
 
 // MergeDripstoneThickness is the tip of a spike that has grown into a spike coming from the other side.
 func MergeDripstoneThickness() DripstoneThickness {
-	return DripstoneThickness{4}
+	return DripstoneThickness{dripstoneThickness(model.DripstoneMerge)}
 }
 
 // DripstoneThicknesses returns all dripstone thicknesses.
@@ -44,16 +48,16 @@ func (d dripstoneThickness) Uint8() uint8 {
 
 // String ...
 func (d dripstoneThickness) String() string {
-	switch d {
-	case 0:
+	switch model.DripstoneThickness(d) {
+	case model.DripstoneTip:
 		return "tip"
-	case 1:
+	case model.DripstoneFrustum:
 		return "frustum"
-	case 2:
+	case model.DripstoneMiddle:
 		return "middle"
-	case 3:
+	case model.DripstoneBase:
 		return "base"
-	case 4:
+	case model.DripstoneMerge:
 		return "merge"
 	}
 	panic("unknown dripstone thickness")
