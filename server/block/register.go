@@ -645,6 +645,9 @@ func init() {
 	// The vanilla creative inventory resolves its entries by registered item name, and the
 	// iron door encodes an item but was never registered as one.
 	world.RegisterItem(IronDoor{})
+	// The vanilla creative inventory resolves its entries by registered item name, and the
+	// flower pot existed only as a block state.
+	world.RegisterItem(FlowerPot{})
 }
 
 func registerAll(blocks []world.Block) {
