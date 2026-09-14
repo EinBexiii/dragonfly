@@ -9,6 +9,7 @@ import (
 // HangingSign is a sign that hangs from a chain below a block or from a bar attached to the side of one.
 type HangingSign struct {
 	transparent
+	blockEntityData
 
 	// Wood is the type of wood of the sign. This field must have one of the values found in the material package.
 	Wood WoodType
@@ -35,6 +36,17 @@ func (s HangingSign) EncodeBlock() (string, map[string]any) {
 		"ground_sign_direction": int32(s.GroundDirection),
 		"hanging":               s.Hanging,
 	}
+}
+
+// EncodeNBT ...
+func (s HangingSign) EncodeNBT() map[string]any {
+	return s.storedNBT("HangingSign")
+}
+
+// DecodeNBT ...
+func (s HangingSign) DecodeNBT(data map[string]any) any {
+	s.blockEntityData = s.storeNBT(data)
+	return s
 }
 
 // allHangingSigns returns all hanging sign states.

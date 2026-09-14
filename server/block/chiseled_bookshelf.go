@@ -10,6 +10,7 @@ import (
 type ChiseledBookshelf struct {
 	solid
 	bass
+	blockEntityData
 
 	// BooksStored is the bit set of occupied slots, from 0 to 63.
 	BooksStored int
@@ -23,6 +24,17 @@ func (c ChiseledBookshelf) EncodeBlock() (string, map[string]any) {
 		"books_stored": int32(c.BooksStored),
 		"direction":    int32(horizontalDirection(c.Facing)),
 	}
+}
+
+// EncodeNBT ...
+func (c ChiseledBookshelf) EncodeNBT() map[string]any {
+	return c.storedNBT("ChiseledBookshelf")
+}
+
+// DecodeNBT ...
+func (c ChiseledBookshelf) DecodeNBT(data map[string]any) any {
+	c.blockEntityData = c.storeNBT(data)
+	return c
 }
 
 // allChiseledBookshelves returns all chiseled bookshelf states.

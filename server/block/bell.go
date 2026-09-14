@@ -9,6 +9,7 @@ import (
 // Bell is a block that rings when it is hit or used.
 type Bell struct {
 	transparent
+	blockEntityData
 
 	// Attachment is the way the bell is attached to the blocks around it.
 	Attachment BellAttachment
@@ -30,6 +31,17 @@ func (b Bell) EncodeBlock() (string, map[string]any) {
 		"direction":  int32(horizontalDirection(b.Facing)),
 		"toggle_bit": b.Toggled,
 	}
+}
+
+// EncodeNBT ...
+func (b Bell) EncodeNBT() map[string]any {
+	return b.storedNBT("Bell")
+}
+
+// DecodeNBT ...
+func (b Bell) DecodeNBT(data map[string]any) any {
+	b.blockEntityData = b.storeNBT(data)
+	return b
 }
 
 // allBells returns all bell states.

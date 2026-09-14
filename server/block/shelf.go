@@ -9,6 +9,7 @@ import (
 // Shelf is a block that holds up to three item stacks on display.
 type Shelf struct {
 	transparent
+	blockEntityData
 
 	// Wood is the type of wood of the shelf. This field must have one of the values found in the material package.
 	Wood WoodType
@@ -33,6 +34,17 @@ func (s Shelf) EncodeBlock() (string, map[string]any) {
 		"powered_bit":                  s.Powered,
 		"powered_shelf_type":           int32(s.PoweredShelfType),
 	}
+}
+
+// EncodeNBT ...
+func (s Shelf) EncodeNBT() map[string]any {
+	return s.storedNBT("Shelf")
+}
+
+// DecodeNBT ...
+func (s Shelf) DecodeNBT(data map[string]any) any {
+	s.blockEntityData = s.storeNBT(data)
+	return s
 }
 
 // allShelves returns all shelf states.
