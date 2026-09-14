@@ -126,6 +126,34 @@ var unknownFace = cube.Face(len(cube.Faces()))
 // unknownDirection is a direction that is used for certain block items. This should not be exposed in the API.
 var unknownDirection = cube.Direction(len(cube.Directions()))
 
+// unknownUpDirection is the second direction without a horizontal equivalent. Bedrock's facing_direction
+// property has six values: 0 (down) and 1 (up) next to the four horizontal ones. Blocks that are only ever
+// placed against a wall can still be saved holding either, so each needs a stand-in: unknownDirection encodes
+// facing_direction 0 and unknownUpDirection encodes 1. This should not be exposed in the API.
+var unknownUpDirection = cube.Direction(len(cube.Directions()) + 1)
+
+// horizontal returns false if d is one of the two stand-ins above, which point down and up.
+func horizontal(d cube.Direction) bool {
+	return d != unknownDirection && d != unknownUpDirection
+}
+
+// facingDirections returns the six directions a facing_direction property may hold: the four horizontal ones
+// and the two stand-ins for down and up.
+func facingDirections() []cube.Direction {
+	return append(cube.Directions(), unknownDirection, unknownUpDirection)
+}
+
+// encodeFacingDirection returns the facing_direction value Bedrock stores for direction d.
+func encodeFacingDirection(d cube.Direction) int32 {
+	switch d {
+	case unknownDirection:
+		return 0
+	case unknownUpDirection:
+		return 1
+	}
+	return int32(d) + 2
+}
+
 func calculateFace(user item.User, placePos cube.Pos) cube.Face {
 	userPos := user.Position()
 	pos := cube.PosFromVec3(userPos)

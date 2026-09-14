@@ -83,20 +83,22 @@ func (l Ladder) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (l Ladder) EncodeBlock() (string, map[string]any) {
-	if l.Facing == unknownDirection {
-		return "minecraft:ladder", map[string]any{"facing_direction": int32(0)}
-	}
-	return "minecraft:ladder", map[string]any{"facing_direction": int32(l.Facing + 2)}
+	return "minecraft:ladder", map[string]any{"facing_direction": encodeFacingDirection(l.Facing)}
 }
 
 // Model ...
 func (l Ladder) Model() world.BlockModel {
+	if !horizontal(l.Facing) {
+		// facing_direction 0 and 1 point down and up, which a ladder has no model for. The game renders such
+		// a ladder as if it faced north, so use that box instead of inventing one.
+		return model.Ladder{Facing: cube.North}
+	}
 	return model.Ladder{Facing: l.Facing}
 }
 
 // allLadders ...
 func allLadders() (b []world.Block) {
-	for _, f := range append(cube.Directions(), unknownDirection) {
+	for _, f := range facingDirections() {
 		b = append(b, Ladder{Facing: f})
 	}
 	return
