@@ -104,6 +104,7 @@ func init() {
 	world.RegisterBlock(PolishedBlackstoneBrick{})
 	world.RegisterBlock(Portal{Axis: cube.X})
 	world.RegisterBlock(Portal{Axis: cube.Z})
+	world.RegisterBlock(Portal{Axis: unknownAxis})
 	world.RegisterBlock(QuartzBricks{})
 	world.RegisterBlock(RawCopper{})
 	world.RegisterBlock(RawGold{})

@@ -123,6 +123,10 @@ type Permutable interface {
 // unknownFace is a face that is used for certain block items. This should not be exposed in the API.
 var unknownFace = cube.Face(len(cube.Faces()))
 
+// unknownAxis is the axis a nether portal block carries before the game gives it an orientation, stored as
+// portal_axis unknown. This should not be exposed in the API.
+var unknownAxis = cube.Axis(len(cube.Axes()))
+
 // unknownDirection is a direction that is used for certain block items. This should not be exposed in the API.
 var unknownDirection = cube.Direction(len(cube.Directions()))
 
