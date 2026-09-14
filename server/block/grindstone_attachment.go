@@ -20,9 +20,15 @@ func WallGrindstoneAttachment() GrindstoneAttachment {
 	return GrindstoneAttachment{2}
 }
 
+// MultipleGrindstoneAttachment is a legacy type of attachment that the game still stores but never places. It
+// is given the same model and support as a standing Grindstone, which is what the game draws it as.
+func MultipleGrindstoneAttachment() GrindstoneAttachment {
+	return GrindstoneAttachment{3}
+}
+
 // GrindstoneAttachments returns all possible GrindstoneAttachments.
 func GrindstoneAttachments() []GrindstoneAttachment {
-	return []GrindstoneAttachment{StandingGrindstoneAttachment(), HangingGrindstoneAttachment(), WallGrindstoneAttachment()}
+	return []GrindstoneAttachment{StandingGrindstoneAttachment(), HangingGrindstoneAttachment(), WallGrindstoneAttachment(), MultipleGrindstoneAttachment()}
 }
 
 type grindstoneAttachment uint8
@@ -41,6 +47,8 @@ func (g grindstoneAttachment) String() string {
 		return "hanging"
 	case 2:
 		return "side"
+	case 3:
+		return "multiple"
 	}
 	panic("should never happen")
 }

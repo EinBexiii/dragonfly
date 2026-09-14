@@ -52,11 +52,14 @@ func (g Grindstone) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *w
 
 // NeighbourUpdateTick ...
 func (g Grindstone) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	supportFace := g.Facing.Face().Opposite()
-	if g.Attach == HangingGrindstoneAttachment() {
+	// Anything that is not hanging from a ceiling or fixed to a wall stands on the ground, including the
+	// legacy multiple attachment.
+	supportFace := cube.FaceDown
+	switch g.Attach {
+	case HangingGrindstoneAttachment():
 		supportFace = cube.FaceUp
-	} else if g.Attach == StandingGrindstoneAttachment() {
-		supportFace = cube.FaceDown
+	case WallGrindstoneAttachment():
+		supportFace = g.Facing.Face().Opposite()
 	}
 	if _, ok := tx.Block(pos.Side(supportFace)).Model().(model.Empty); ok {
 		// Grindstone is pickaxeHarvestable, so don't use breakBlock() here.
