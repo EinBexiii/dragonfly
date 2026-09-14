@@ -575,6 +575,10 @@ func init() {
 	for _, c := range item.OptionalColours() {
 		world.RegisterItem(ShulkerBox{Colour: c})
 	}
+
+	// The vanilla creative inventory resolves its entries by registered item name, and the
+	// iron door encodes an item but was never registered as one.
+	world.RegisterItem(IronDoor{})
 }
 
 func registerAll(blocks []world.Block) {
