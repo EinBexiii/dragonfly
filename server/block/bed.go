@@ -301,6 +301,5 @@ func (b Bed) SafeSpawn(pos cube.Pos, tx *world.Tx) (cube.Pos, bool) {
 
 // supportedFromBelow ...
 func supportedFromBelow(pos cube.Pos, tx *world.Tx) bool {
-	below := pos.Side(cube.FaceDown)
-	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
+	return faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp)
 }

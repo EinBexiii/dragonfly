@@ -236,6 +236,12 @@ func place(tx *world.Tx, pos cube.Pos, b world.Block, user item.User, ctx *item.
 	tx.PlaySound(pos.Vec3(), sound.BlockPlace{Block: b})
 }
 
+// faceSolid checks if the block at the position passed has a solid face on the side passed. A block that hangs
+// from, stands on or is bolted to another needs that face of it.
+func faceSolid(tx *world.Tx, pos cube.Pos, face cube.Face) bool {
+	return tx.Block(pos).Model().FaceSolid(pos, face, tx)
+}
+
 // horizontalDirection returns the horizontal direction of the given direction. This is a legacy type still used in
 // various blocks.
 func horizontalDirection(d cube.Direction) cube.Direction {
@@ -250,6 +256,13 @@ func horizontalDirection(d cube.Direction) cube.Direction {
 		return cube.East
 	}
 	panic("invalid direction")
+}
+
+// blockItemName returns the name of the item a block that is named after itself encodes to. Every wave 3 block has an
+// item carrying exactly its block name, so deriving the one from the other keeps a single spelling of each name.
+func blockItemName(b world.Block) string {
+	name, _ := b.EncodeBlock()
+	return name
 }
 
 // placed checks if an item was placed with the use context passed.
