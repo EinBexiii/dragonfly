@@ -16,6 +16,12 @@ func (r Rail) EncodeBlock() (string, map[string]any) {
 	return "minecraft:rail", map[string]any{"rail_direction": int32(r.Direction)}
 }
 
+// EncodeItem ...
+func (r Rail) EncodeItem() (name string, meta int16) {
+	name, _ = r.EncodeBlock()
+	return name, 0
+}
+
 // allRails ...
 func allRails() (rails []world.Block) {
 	for direction := 0; direction < 10; direction++ {

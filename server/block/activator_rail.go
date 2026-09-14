@@ -18,6 +18,12 @@ func (r ActivatorRail) EncodeBlock() (string, map[string]any) {
 	return "minecraft:activator_rail", map[string]any{"rail_direction": int32(r.Direction), "rail_data_bit": boolByte(r.Powered)}
 }
 
+// EncodeItem ...
+func (r ActivatorRail) EncodeItem() (name string, meta int16) {
+	name, _ = r.EncodeBlock()
+	return name, 0
+}
+
 // allActivatorRails ...
 func allActivatorRails() (rails []world.Block) {
 	for direction := 0; direction < 6; direction++ {
