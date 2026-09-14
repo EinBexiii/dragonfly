@@ -32,6 +32,12 @@ func (t IronTrapdoor) EncodeBlock() (string, map[string]any) {
 	return "minecraft:iron_trapdoor", trapdoorProperties(t.Facing, t.Open, t.Top)
 }
 
+// EncodeItem ...
+func (t IronTrapdoor) EncodeItem() (name string, meta int16) {
+	name, _ = t.EncodeBlock()
+	return name, 0
+}
+
 // trapdoorProperties encodes the states every trapdoor material shares.
 func trapdoorProperties(facing cube.Direction, open, top bool) map[string]any {
 	return map[string]any{"direction": int32(math.Abs(float64(facing) - 3)), "open_bit": open, "upside_down_bit": top}
