@@ -2,7 +2,9 @@ package block
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // ChiseledBookshelf is a bookshelf with six slots that books can be put into and taken out of. It is a full cube in
@@ -16,6 +18,18 @@ type ChiseledBookshelf struct {
 	BooksStored int
 	// Facing is the direction the front of the bookshelf points in.
 	Facing cube.Direction
+}
+
+// UseOnBlock places the bookshelf with its shelves towards the player.
+func (c ChiseledBookshelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, c)
+	if !used {
+		return false
+	}
+	c.Facing = user.Rotation().Direction().Opposite()
+
+	place(tx, pos, c, user, ctx)
+	return placed(ctx)
 }
 
 // EncodeBlock ...

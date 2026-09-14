@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // HangingSign is a sign that hangs from a chain below a block or from a bar attached to the side of one.
@@ -26,6 +28,46 @@ type HangingSign struct {
 // Model ...
 func (s HangingSign) Model() world.BlockModel {
 	return model.HangingSign{Facing: s.Facing, Hanging: s.Hanging}
+}
+
+// UseOnBlock hangs the sign below the block clicked underneath, turned the sixteenth of a circle the player faces,
+// or bolts it to the wall whose side was clicked. A sign cannot stand on top of a block.
+func (s HangingSign) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, face, used := firstReplaceable(tx, pos, face, s)
+	if !used || face == cube.FaceUp {
+		return false
+	}
+	if face == cube.FaceDown {
+		s.Hanging = true
+		s.GroundDirection = int(user.Rotation().Orientation().Opposite()) % 16
+	} else {
+		s.Facing = face
+	}
+	if !s.canSurvive(pos, tx) {
+		return false
+	}
+
+	place(tx, pos, s, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (s HangingSign) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !s.canSurvive(pos, tx) {
+		breakBlockNoDrops(s, pos, tx)
+	}
+}
+
+// canSurvive checks if the block the sign hangs from or is bolted to is still there.
+func (s HangingSign) canSurvive(pos cube.Pos, tx *world.Tx) bool {
+	if s.Hanging {
+		above := pos.Side(cube.FaceUp)
+		if _, ok := tx.Block(above).(HangingSign); ok {
+			return true
+		}
+		return faceSolid(tx, above, cube.FaceDown)
+	}
+	return faceSolid(tx, pos.Side(s.Facing.Opposite()), s.Facing)
 }
 
 // EncodeBlock ...

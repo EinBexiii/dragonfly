@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // Shelf is a block that holds up to three item stacks on display.
@@ -25,6 +27,18 @@ type Shelf struct {
 // Model ...
 func (s Shelf) Model() world.BlockModel {
 	return model.Shelf{Facing: s.Facing}
+}
+
+// UseOnBlock places the shelf with its front towards the player, as a lectern or a chest is placed.
+func (s Shelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, s)
+	if !used {
+		return false
+	}
+	s.Facing = user.Rotation().Direction().Opposite()
+
+	place(tx, pos, s, user, ctx)
+	return placed(ctx)
 }
 
 // EncodeBlock ...
