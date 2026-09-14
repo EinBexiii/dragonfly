@@ -35,15 +35,27 @@ func (p PitcherPlant) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx 
 	return placed(ctx)
 }
 
-// NeighbourUpdateTick breaks the half of the plant whose other half is gone.
+// NeighbourUpdateTick breaks the half of the plant whose other half is gone, and the plant itself when its soil is.
 func (p PitcherPlant) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !p.canSurvive(pos, tx) {
+		breakBlockNoDrops(p, pos, tx)
+	}
+}
+
+// canSurvive checks that the plant still has both of its halves and, under the lower one, its soil.
+func (p PitcherPlant) canSurvive(pos cube.Pos, tx *world.Tx) bool {
 	other := cube.FaceUp
 	if p.UpperPart {
 		other = cube.FaceDown
 	}
-	if half, ok := tx.Block(pos.Side(other)).(PitcherPlant); !ok || half.UpperPart == p.UpperPart {
-		breakBlockNoDrops(p, pos, tx)
+	half, ok := tx.Block(pos.Side(other)).(PitcherPlant)
+	if !ok || half.UpperPart == p.UpperPart {
+		return false
 	}
+	if p.UpperPart {
+		return true
+	}
+	return supportsVegetation(p, tx.Block(pos.Side(cube.FaceDown)))
 }
 
 // EncodeBlock ...

@@ -39,6 +39,14 @@ func (d BigDripleaf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *
 	return placed(ctx)
 }
 
+// NeighbourUpdateTick ...
+func (d BigDripleaf) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	below := pos.Side(cube.FaceDown)
+	if _, stem := tx.Block(below).(BigDripleaf); !stem && !faceSolid(tx, below, cube.FaceUp) {
+		breakBlockNoDrops(d, pos, tx)
+	}
+}
+
 // EncodeBlock ...
 func (d BigDripleaf) EncodeBlock() (string, map[string]any) {
 	return "minecraft:big_dripleaf", map[string]any{
@@ -79,6 +87,29 @@ func (d SmallDripleaf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx
 	place(tx, pos, d, user, ctx)
 	place(tx, pos.Side(cube.FaceUp), upper, user, ctx)
 	return placed(ctx)
+}
+
+// NeighbourUpdateTick breaks the half of the plant whose other half is gone, and the plant itself when its soil is.
+func (d SmallDripleaf) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !d.canSurvive(pos, tx) {
+		breakBlockNoDrops(d, pos, tx)
+	}
+}
+
+// canSurvive checks that the plant still has both of its halves and, under the lower one, its soil.
+func (d SmallDripleaf) canSurvive(pos cube.Pos, tx *world.Tx) bool {
+	other := cube.FaceUp
+	if d.UpperPart {
+		other = cube.FaceDown
+	}
+	half, ok := tx.Block(pos.Side(other)).(SmallDripleaf)
+	if !ok || half.UpperPart == d.UpperPart {
+		return false
+	}
+	if d.UpperPart {
+		return true
+	}
+	return supportsVegetation(d, tx.Block(pos.Side(cube.FaceDown)))
 }
 
 // EncodeBlock ...

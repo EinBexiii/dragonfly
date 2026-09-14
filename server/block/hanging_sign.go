@@ -41,7 +41,7 @@ func (s HangingSign) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *
 		s.Hanging = true
 		s.GroundDirection = int(user.Rotation().Orientation().Opposite()) % 16
 	} else {
-		s.Facing = face
+		s.Facing = wallSignFacing(face, user)
 	}
 	if !s.canSurvive(pos, tx) {
 		return false
@@ -58,7 +58,19 @@ func (s HangingSign) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	}
 }
 
-// canSurvive checks if the block the sign hangs from or is bolted to is still there.
+// wallSignFacing returns the face a sign put against the wall clicked shows. The bar it hangs from runs along the
+// wall, so the sign faces across it, turned to the player of the two ways it can.
+func wallSignFacing(wall cube.Face, user item.User) cube.Face {
+	facing := user.Rotation().Direction().Opposite().Face()
+	if facing.Axis() == wall.Axis() {
+		// The player is looking along the bar rather than at the sign, so the wall alone decides.
+		return wall.RotateRight()
+	}
+	return facing
+}
+
+// canSurvive checks if the block the sign hangs from is still there. A sign below a block hangs from that block or
+// from another sign; a sign on a wall hangs from a bar whose ends rest in the blocks beside it.
 func (s HangingSign) canSurvive(pos cube.Pos, tx *world.Tx) bool {
 	if s.Hanging {
 		above := pos.Side(cube.FaceUp)
@@ -67,7 +79,12 @@ func (s HangingSign) canSurvive(pos cube.Pos, tx *world.Tx) bool {
 		}
 		return faceSolid(tx, above, cube.FaceDown)
 	}
-	return faceSolid(tx, pos.Side(s.Facing.Opposite()), s.Facing)
+	for _, end := range []cube.Face{s.Facing.RotateRight(), s.Facing.RotateLeft()} {
+		if faceSolid(tx, pos.Side(end), end.Opposite()) {
+			return true
+		}
+	}
+	return false
 }
 
 // EncodeBlock ...

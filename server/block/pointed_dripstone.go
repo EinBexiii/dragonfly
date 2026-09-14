@@ -30,28 +30,59 @@ func (d PointedDripstone) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3,
 	if !used {
 		return false
 	}
-	d.Thickness, d.Hanging = TipDripstoneThickness(), face == cube.FaceDown
+	d.Hanging = face == cube.FaceDown
 	if !d.canSurvive(pos, tx) {
 		return false
 	}
+	d.Thickness = d.thickness(pos, tx)
 
 	place(tx, pos, d, user, ctx)
 	return placed(ctx)
 }
 
-// NeighbourUpdateTick ...
+// NeighbourUpdateTick breaks a segment that has nothing to grow from, and otherwise lets it take the shape its place
+// in the spike now gives it. Writing only a changed shape keeps the segments from updating each other forever.
 func (d PointedDripstone) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 	if !d.canSurvive(pos, tx) {
 		breakBlockNoDrops(d, pos, tx)
+		return
 	}
+	if thickness := d.thickness(pos, tx); thickness != d.Thickness {
+		d.Thickness = thickness
+		tx.SetBlock(pos, d, nil)
+	}
+}
+
+// thickness returns the segment this block forms in its spike: the tip at the growing end, the base at the block it
+// grows from, the frustum just above a tip and the middle anywhere between. Two spikes meeting tip to tip merge.
+func (d PointedDripstone) thickness(pos cube.Pos, tx *world.Tx) DripstoneThickness {
+	beyond, ok := tx.Block(pos.Side(d.growth())).(PointedDripstone)
+	if ok && beyond.Hanging != d.Hanging {
+		return MergeDripstoneThickness()
+	}
+	if !ok || beyond.Hanging != d.Hanging {
+		return TipDripstoneThickness()
+	}
+	if beyond.Thickness == TipDripstoneThickness() || beyond.Thickness == MergeDripstoneThickness() {
+		return FrustumDripstoneThickness()
+	}
+	if behind, ok := tx.Block(pos.Side(d.growth().Opposite())).(PointedDripstone); !ok || behind.Hanging != d.Hanging {
+		return BaseDripstoneThickness()
+	}
+	return MiddleDripstoneThickness()
+}
+
+// growth returns the face the spike grows towards, away from the block carrying it.
+func (d PointedDripstone) growth() cube.Face {
+	if d.Hanging {
+		return cube.FaceDown
+	}
+	return cube.FaceUp
 }
 
 // canSurvive checks if the spike still grows out of a block or out of the segment before it.
 func (d PointedDripstone) canSurvive(pos cube.Pos, tx *world.Tx) bool {
-	grownFrom := cube.FaceDown
-	if d.Hanging {
-		grownFrom = cube.FaceUp
-	}
+	grownFrom := d.growth().Opposite()
 	side := pos.Side(grownFrom)
 	if other, ok := tx.Block(side).(PointedDripstone); ok {
 		return other.Hanging == d.Hanging
