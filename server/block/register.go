@@ -231,6 +231,7 @@ func init() {
 	registerAll(allQuartz())
 	registerAll(allRedstoneTorches())
 	registerAll(allRedstoneWires())
+	registerAll(allRespawnAnchors())
 	registerAll(allSandstones())
 	registerAll(allScaffolding())
 	registerAll(allSeaPickles())
