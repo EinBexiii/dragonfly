@@ -131,6 +131,7 @@ const (
 	hashLapis
 	hashLapisOre
 	hashLava
+	hashLeafLitter
 	hashLeaves
 	hashLectern
 	hashLever
@@ -161,6 +162,7 @@ const (
 	hashObsidian
 	hashPackedIce
 	hashPackedMud
+	hashPaleMossCarpet
 	hashPinkPetals
 	hashPlanks
 	hashPodzol
@@ -757,6 +759,10 @@ func (l Lava) Hash() (uint64, uint64) {
 	return hashLava, uint64(boolByte(l.Still)) | uint64(l.Depth)<<1 | uint64(boolByte(l.Falling))<<9
 }
 
+func (l LeafLitter) Hash() (uint64, uint64) {
+	return hashLeafLitter, uint64(l.AdditionalCount) | uint64(l.Facing)<<8
+}
+
 func (l Leaves) Hash() (uint64, uint64) {
 	return hashLeaves, uint64(l.Type.Uint8()) | uint64(boolByte(l.Persistent))<<4 | uint64(boolByte(l.ShouldUpdate))<<5
 }
@@ -875,6 +881,10 @@ func (PackedIce) Hash() (uint64, uint64) {
 
 func (PackedMud) Hash() (uint64, uint64) {
 	return hashPackedMud, 0
+}
+
+func (p PaleMossCarpet) Hash() (uint64, uint64) {
+	return hashPaleMossCarpet, uint64(boolByte(p.UpperPart)) | uint64(p.North.Uint8())<<1 | uint64(p.East.Uint8())<<3 | uint64(p.South.Uint8())<<5 | uint64(p.West.Uint8())<<7
 }
 
 func (p PinkPetals) Hash() (uint64, uint64) {
