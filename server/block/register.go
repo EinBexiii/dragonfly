@@ -232,6 +232,7 @@ func init() {
 	registerAll(allRedstoneTorches())
 	registerAll(allRedstoneWires())
 	registerAll(allSandstones())
+	registerAll(allScaffolding())
 	registerAll(allSeaPickles())
 	registerAll(allShelves())
 	registerAll(allSigns())
