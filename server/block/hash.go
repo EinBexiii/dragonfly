@@ -23,6 +23,7 @@ const (
 	hashBedrock
 	hashBeetrootSeeds
 	hashBell
+	hashBigDripleaf
 	hashBlackstone
 	hashBlastFurnace
 	hashBlueIce
@@ -192,6 +193,7 @@ const (
 	hashSkull
 	hashSlab
 	hashSlime
+	hashSmallDripleaf
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
@@ -309,6 +311,10 @@ func (b BeetrootSeeds) Hash() (uint64, uint64) {
 
 func (b Bell) Hash() (uint64, uint64) {
 	return hashBell, uint64(b.Attachment.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Toggled))<<4
+}
+
+func (d BigDripleaf) Hash() (uint64, uint64) {
+	return hashBigDripleaf, uint64(boolByte(d.Head)) | uint64(d.Tilt.Uint8())<<1 | uint64(d.Facing)<<3
 }
 
 func (b Blackstone) Hash() (uint64, uint64) {
@@ -985,6 +991,10 @@ func (s Slab) Hash() (uint64, uint64) {
 
 func (Slime) Hash() (uint64, uint64) {
 	return hashSlime, 0
+}
+
+func (d SmallDripleaf) Hash() (uint64, uint64) {
+	return hashSmallDripleaf, uint64(boolByte(d.UpperPart)) | uint64(d.Facing)<<1
 }
 
 func (SmithingTable) Hash() (uint64, uint64) {

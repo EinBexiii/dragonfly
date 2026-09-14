@@ -69,6 +69,18 @@ func (b Bell) WithFacing(facing cube.Direction) world.Block {
 }
 
 // FacingDirection returns the horizontal direction the block faces.
+func (b BigDripleaf) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b BigDripleaf) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
 func (b BlastFurnace) FacingDirection() cube.Direction {
 	return b.Facing
 }
@@ -304,6 +316,18 @@ func (b Shelf) FacingDirection() cube.Direction {
 // WithFacing returns a copy of the block with its facing set to facing. It does not update any
 // other blocks that the block may be part of, such as the second half of a bed or door.
 func (b Shelf) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
+func (b SmallDripleaf) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b SmallDripleaf) WithFacing(facing cube.Direction) world.Block {
 	b.Facing = facing
 	return b
 }
