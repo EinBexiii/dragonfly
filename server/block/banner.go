@@ -63,11 +63,11 @@ func (b Banner) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world
 
 // NeighbourUpdateTick ...
 func (b Banner) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if b.Attach.hanging {
-		if _, ok := tx.Block(pos.Side(b.Attach.facing.Opposite().Face())).(Air); ok {
-			breakBlock(b, pos, tx)
-		}
-	} else if _, ok := tx.Block(pos.Side(cube.FaceDown)).(Air); ok {
+	face, ok := b.Attach.supportFace()
+	if !ok {
+		return
+	}
+	if _, ok := tx.Block(pos.Side(face)).(Air); ok {
 		breakBlock(b, pos, tx)
 	}
 }
@@ -80,7 +80,7 @@ func (b Banner) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (b Banner) EncodeBlock() (name string, properties map[string]any) {
 	if b.Attach.hanging {
-		return "minecraft:wall_banner", map[string]any{"facing_direction": int32(b.Attach.facing + 2)}
+		return "minecraft:wall_banner", map[string]any{"facing_direction": encodeFacingDirection(b.Attach.facing)}
 	}
 	return "minecraft:standing_banner", map[string]any{"ground_sign_direction": int32(b.Attach.o)}
 }
@@ -127,7 +127,7 @@ func invertColourID(id int16) item.Colour {
 
 // allBanners returns all possible banners.
 func allBanners() (banners []world.Block) {
-	for _, d := range cube.Directions() {
+	for _, d := range facingDirections() {
 		banners = append(banners, Banner{Attach: WallAttachment(d)})
 	}
 	for o := cube.Orientation(0); o <= 15; o++ {

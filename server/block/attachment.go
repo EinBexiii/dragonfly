@@ -20,6 +20,18 @@ func StandingAttachment(o cube.Orientation) Attachment {
 	return Attachment{o: o}
 }
 
+// supportFace returns the face of the block the Attachment is attached to. The second return value is false
+// for a wall attachment whose facing has no horizontal equivalent, which is attached to nothing.
+func (a Attachment) supportFace() (cube.Face, bool) {
+	if !a.hanging {
+		return cube.FaceDown, true
+	}
+	if !horizontal(a.facing) {
+		return 0, false
+	}
+	return a.facing.Opposite().Face(), true
+}
+
 // Uint8 returns the Attachment as a uint8.
 func (a Attachment) Uint8() uint8 {
 	if !a.hanging {
@@ -56,7 +68,9 @@ func (a Attachment) Rotation() cube.Rotation {
 			yaw = 90
 		case cube.East:
 			yaw = -90
-		case cube.North:
+		case cube.North, unknownDirection, unknownUpDirection:
+			// facing_direction 0 and 1 point down and up, which a wall attachment has no rotation for. The
+			// game draws such a block as if it faced north, so give it the same rotation.
 			yaw = 180
 		}
 	}

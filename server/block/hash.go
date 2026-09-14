@@ -324,7 +324,7 @@ func (Beacon) Hash() (uint64, uint64) {
 }
 
 func (b Bed) Hash() (uint64, uint64) {
-	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2
+	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2 | uint64(boolByte(b.Occupied))<<3
 }
 
 func (b Bedrock) Hash() (uint64, uint64) {
@@ -348,7 +348,7 @@ func (BlueIce) Hash() (uint64, uint64) {
 }
 
 func (b Bone) Hash() (uint64, uint64) {
-	return hashBone, uint64(b.Axis)
+	return hashBone, uint64(b.Axis) | uint64(b.Deprecated)<<2
 }
 
 func (Bookshelf) Hash() (uint64, uint64) {
@@ -692,7 +692,7 @@ func (g Grindstone) Hash() (uint64, uint64) {
 }
 
 func (h HayBale) Hash() (uint64, uint64) {
-	return hashHayBale, uint64(h.Axis)
+	return hashHayBale, uint64(h.Axis) | uint64(h.Deprecated)<<2
 }
 
 func (Honeycomb) Hash() (uint64, uint64) {
@@ -748,7 +748,7 @@ func (t IronTrapdoor) Hash() (uint64, uint64) {
 }
 
 func (i ItemFrame) Hash() (uint64, uint64) {
-	return hashItemFrame, uint64(i.Facing) | uint64(boolByte(i.Glowing))<<3
+	return hashItemFrame, uint64(i.Facing) | uint64(boolByte(i.Glowing))<<3 | uint64(boolByte(i.Map))<<4 | uint64(boolByte(i.Photo))<<5
 }
 
 func (Jukebox) Hash() (uint64, uint64) {
@@ -784,7 +784,7 @@ func (l Leaves) Hash() (uint64, uint64) {
 }
 
 func (l Lectern) Hash() (uint64, uint64) {
-	return hashLectern, uint64(l.Facing)
+	return hashLectern, uint64(l.Facing) | uint64(boolByte(l.Powered))<<2
 }
 
 func (l Lever) Hash() (uint64, uint64) {
@@ -967,8 +967,8 @@ func (p PumpkinSeeds) Hash() (uint64, uint64) {
 	return hashPumpkinSeeds, uint64(p.Growth) | uint64(p.Direction)<<8
 }
 
-func (Purpur) Hash() (uint64, uint64) {
-	return hashPurpur, 0
+func (p Purpur) Hash() (uint64, uint64) {
+	return hashPurpur, uint64(p.Axis)
 }
 
 func (p PurpurPillar) Hash() (uint64, uint64) {
@@ -1167,8 +1167,8 @@ func (SulfurBricks) Hash() (uint64, uint64) {
 	return hashSulfurBricks, 0
 }
 
-func (TNT) Hash() (uint64, uint64) {
-	return hashTNT, 0
+func (t TNT) Hash() (uint64, uint64) {
+	return hashTNT, uint64(boolByte(t.Unstable))
 }
 
 func (Terracotta) Hash() (uint64, uint64) {

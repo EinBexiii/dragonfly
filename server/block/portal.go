@@ -22,6 +22,11 @@ type portalTraveller interface {
 
 // Model ...
 func (p Portal) Model() world.BlockModel {
+	if p.Axis == unknownAxis {
+		// A portal without an orientation has no model of its own: the game only ever stores it on a block
+		// that is not lit yet. Use the x axis model so the block still has a sensible shape.
+		return model.Portal{Axis: cube.X}
+	}
 	return model.Portal{Axis: p.Axis}
 }
 
@@ -42,6 +47,9 @@ func (p Portal) HasLiquidDrops() bool {
 
 // EncodeBlock ...
 func (p Portal) EncodeBlock() (string, map[string]any) {
+	if p.Axis == unknownAxis {
+		return "minecraft:portal", map[string]any{"portal_axis": "unknown"}
+	}
 	return "minecraft:portal", map[string]any{"portal_axis": p.Axis.String()}
 }
 
