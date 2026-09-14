@@ -190,6 +190,7 @@ func init() {
 	registerAll(allDripleaves())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
+	registerAll(allEggs())
 	registerAll(allEndRods())
 	registerAll(allEnderChests())
 	registerAll(allFarmland())

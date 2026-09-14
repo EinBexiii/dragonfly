@@ -205,6 +205,7 @@ const (
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
+	hashSnifferEgg
 	hashSnow
 	hashSoulSand
 	hashSoulSoil
@@ -227,6 +228,7 @@ const (
 	hashTorch
 	hashTuff
 	hashTuffBricks
+	hashTurtleEgg
 	hashVines
 	hashWall
 	hashWater
@@ -1049,6 +1051,10 @@ func (SmoothBasalt) Hash() (uint64, uint64) {
 	return hashSmoothBasalt, 0
 }
 
+func (s SnifferEgg) Hash() (uint64, uint64) {
+	return hashSnifferEgg, uint64(s.Cracks.Uint8())
+}
+
 func (Snow) Hash() (uint64, uint64) {
 	return hashSnow, 0
 }
@@ -1135,6 +1141,10 @@ func (t Tuff) Hash() (uint64, uint64) {
 
 func (t TuffBricks) Hash() (uint64, uint64) {
 	return hashTuffBricks, uint64(boolByte(t.Chiseled))
+}
+
+func (t TurtleEgg) Hash() (uint64, uint64) {
+	return hashTurtleEgg, uint64(t.Count) | uint64(t.Cracks.Uint8())<<8
 }
 
 func (v Vines) Hash() (uint64, uint64) {
