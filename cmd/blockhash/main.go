@@ -261,7 +261,10 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 1
 	case "BambooLeafSize":
 		return "uint64(" + s + ".Uint8())", 2
-	case "Direction", "Axis":
+	case "Direction":
+		// facing_direction values 4 and 5 are stored in a Direction too, so it needs three bits.
+		return "uint64(" + s + ")", 3
+	case "Axis":
 		return "uint64(" + s + ")", 2
 	case "Face":
 		return "uint64(" + s + ")", 3

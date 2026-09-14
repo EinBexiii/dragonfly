@@ -88,12 +88,11 @@ func (l Ladder) EncodeBlock() (string, map[string]any) {
 
 // Model ...
 func (l Ladder) Model() world.BlockModel {
-	if !horizontal(l.Facing) {
-		// facing_direction 0 and 1 point down and up, which a ladder has no model for. The game renders such
-		// a ladder as if it faced north, so use that box instead of inventing one.
-		return model.Ladder{Facing: cube.North}
-	}
+	// facing_direction 0 and 1 point down and up, which no placed ladder has. The model keeps
+	// treating them as it always did (a full cube, since no face matches) until the Bedrock
+	// server's box for them has been read; accepting the state must not move a box.
 	return model.Ladder{Facing: l.Facing}
+}
 }
 
 // allLadders ...
