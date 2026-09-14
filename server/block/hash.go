@@ -734,7 +734,7 @@ func (c IronChain) Hash() (uint64, uint64) {
 }
 
 func (d IronDoor) Hash() (uint64, uint64) {
-	return hashIronDoor, uint64(d.Facing) | uint64(boolByte(d.Open))<<2 | uint64(boolByte(d.Top))<<3 | uint64(boolByte(d.Right))<<4
+	return hashIronDoor, uint64(d.Facing) | uint64(boolByte(d.Open))<<3 | uint64(boolByte(d.Top))<<4 | uint64(boolByte(d.Right))<<5
 }
 
 func (i IronOre) Hash() (uint64, uint64) {
@@ -742,7 +742,7 @@ func (i IronOre) Hash() (uint64, uint64) {
 }
 
 func (t IronTrapdoor) Hash() (uint64, uint64) {
-	return hashIronTrapdoor, uint64(t.Facing) | uint64(boolByte(t.Open))<<2 | uint64(boolByte(t.Top))<<3
+	return hashIronTrapdoor, uint64(t.Facing) | uint64(boolByte(t.Open))<<3 | uint64(boolByte(t.Top))<<4
 }
 
 func (i ItemFrame) Hash() (uint64, uint64) {
@@ -1174,7 +1174,7 @@ func (t Torch) Hash() (uint64, uint64) {
 }
 
 func (t TripwireHook) Hash() (uint64, uint64) {
-	return hashTripwireHook, uint64(t.Facing) | uint64(boolByte(t.Attached))<<2 | uint64(boolByte(t.Powered))<<3
+	return hashTripwireHook, uint64(t.Facing) | uint64(boolByte(t.Attached))<<3 | uint64(boolByte(t.Powered))<<4
 }
 
 func (t Tuff) Hash() (uint64, uint64) {
