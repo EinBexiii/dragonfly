@@ -197,6 +197,7 @@ func init() {
 	registerAll(allFurnaces())
 	registerAll(allGlazedTerracotta())
 	registerAll(allGrindstones())
+	registerAll(allHangingSigns())
 	registerAll(allHayBales())
 	registerAll(allHoppers())
 	registerAll(allItemFrames())
