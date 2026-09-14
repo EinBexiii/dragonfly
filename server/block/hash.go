@@ -868,8 +868,8 @@ func (p PumpkinSeeds) Hash() (uint64, uint64) {
 	return hashPumpkinSeeds, uint64(p.Growth) | uint64(p.Direction)<<8
 }
 
-func (Purpur) Hash() (uint64, uint64) {
-	return hashPurpur, 0
+func (p Purpur) Hash() (uint64, uint64) {
+	return hashPurpur, uint64(p.Axis)
 }
 
 func (p PurpurPillar) Hash() (uint64, uint64) {
