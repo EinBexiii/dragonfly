@@ -1,17 +1,14 @@
 package block
 
 import (
-	"math/rand/v2"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // LightningRod is a block that attracts lightning strikes to the point it is placed at.
+// Oxidation and Waxed are decoded state and nothing else: this block has no BreakInfo, no waxing or scraping and
+// no random oxidation tick, because a loaded world must come back exactly as it was written.
 type LightningRod struct {
 	transparent
 	bassDrum
@@ -29,50 +26,6 @@ type LightningRod struct {
 // Model ...
 func (l LightningRod) Model() world.BlockModel {
 	return model.LightningRod{Axis: l.Facing.Axis()}
-}
-
-// BreakInfo ...
-func (l LightningRod) BreakInfo() BreakInfo {
-	return newBreakInfo(3, func(t item.Tool) bool {
-		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierStone.HarvestLevel
-	}, pickaxeEffective, oneOf(l)).withBlastResistance(6)
-}
-
-// Wax waxes the lightning rod to stop it from oxidising further.
-func (l LightningRod) Wax(cube.Pos, mgl64.Vec3) (world.Block, bool) {
-	if l.Waxed {
-		return l, false
-	}
-	l.Waxed = true
-	return l, true
-}
-
-func (l LightningRod) Strip() (world.Block, world.Sound, bool) {
-	if l.Waxed {
-		l.Waxed = false
-		return l, sound.WaxRemoved{}, true
-	} else if ot, ok := l.Oxidation.Decrease(); ok {
-		l.Oxidation = ot
-		return l, sound.CopperScraped{}, true
-	}
-	return l, nil, false
-}
-
-func (l LightningRod) CanOxidate() bool {
-	return !l.Waxed
-}
-
-func (l LightningRod) OxidationLevel() OxidationType {
-	return l.Oxidation
-}
-
-func (l LightningRod) WithOxidationLevel(o OxidationType) Oxidisable {
-	l.Oxidation = o
-	return l
-}
-
-func (l LightningRod) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	attemptOxidation(pos, tx, r, l)
 }
 
 // EncodeItem ...

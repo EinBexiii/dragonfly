@@ -1,18 +1,14 @@
 package block
 
 import (
-	"math/rand/v2"
-
-	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/df-mc/dragonfly/server/world/sound"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // CopperBulb is a light source that a redstone pulse switches on and off. It is a full cube in every state: the
 // 2026-09-14 BDS review, batch B section 1, finds all eight variants inheriting the unit-box getter, which reads
 // neither lit nor powered_bit.
+// Oxidation and Waxed are decoded state and nothing else: this block has no BreakInfo, no waxing or scraping and
+// no random oxidation tick, because a loaded world must come back exactly as it was written.
 type CopperBulb struct {
 	solid
 	bassDrum
@@ -25,50 +21,6 @@ type CopperBulb struct {
 	Lit bool
 	// Powered specifies if the bulb is currently receiving a redstone signal.
 	Powered bool
-}
-
-// BreakInfo ...
-func (c CopperBulb) BreakInfo() BreakInfo {
-	return newBreakInfo(3, func(t item.Tool) bool {
-		return t.ToolType() == item.TypePickaxe && t.HarvestLevel() >= item.ToolTierStone.HarvestLevel
-	}, pickaxeEffective, oneOf(c)).withBlastResistance(6)
-}
-
-// Wax waxes the copper bulb to stop it from oxidising further.
-func (c CopperBulb) Wax(cube.Pos, mgl64.Vec3) (world.Block, bool) {
-	if c.Waxed {
-		return c, false
-	}
-	c.Waxed = true
-	return c, true
-}
-
-func (c CopperBulb) Strip() (world.Block, world.Sound, bool) {
-	if c.Waxed {
-		c.Waxed = false
-		return c, sound.WaxRemoved{}, true
-	} else if ot, ok := c.Oxidation.Decrease(); ok {
-		c.Oxidation = ot
-		return c, sound.CopperScraped{}, true
-	}
-	return c, nil, false
-}
-
-func (c CopperBulb) CanOxidate() bool {
-	return !c.Waxed
-}
-
-func (c CopperBulb) OxidationLevel() OxidationType {
-	return c.Oxidation
-}
-
-func (c CopperBulb) WithOxidationLevel(o OxidationType) Oxidisable {
-	c.Oxidation = o
-	return c
-}
-
-func (c CopperBulb) RandomTick(pos cube.Pos, tx *world.Tx, r *rand.Rand) {
-	attemptOxidation(pos, tx, r, c)
 }
 
 // EncodeItem ...
