@@ -2,7 +2,9 @@ package block
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // LeafLitter is a scattering of fallen leaves on the ground. It has no collision: the 2026-09-14 BDS review, batch B
@@ -16,6 +18,34 @@ type LeafLitter struct {
 	AdditionalCount int
 	// Facing is the direction the leaves are turned towards.
 	Facing cube.Direction
+}
+
+// UseOnBlock turns the litter towards the player, or adds a fourth leaf at most to the litter already on the block.
+func (l LeafLitter) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	if existing, ok := tx.Block(pos).(LeafLitter); ok {
+		if existing.AdditionalCount >= 3 {
+			return false
+		}
+		existing.AdditionalCount++
+
+		place(tx, pos, existing, user, ctx)
+		return placed(ctx)
+	}
+	pos, _, used := firstReplaceable(tx, pos, face, l)
+	if !used || !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		return false
+	}
+	l.AdditionalCount, l.Facing = 0, user.Rotation().Direction().Opposite()
+
+	place(tx, pos, l, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (l LeafLitter) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		breakBlockNoDrops(l, pos, tx)
+	}
 }
 
 // EncodeBlock ...

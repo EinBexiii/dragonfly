@@ -25,22 +25,26 @@ type Coral struct {
 // UseOnBlock ...
 func (c Coral) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
 	pos, _, used := firstReplaceable(tx, pos, face, c)
-	if !used {
+	if !used || !coralPlaceable(pos, tx) {
 		return false
-	}
-	if !tx.Block(pos.Side(cube.FaceDown)).Model().FaceSolid(pos.Side(cube.FaceDown), cube.FaceUp, tx) {
-		return false
-	}
-	if liquid, ok := tx.Liquid(pos); ok {
-		if water, ok := liquid.(Water); ok {
-			if water.Depth != 8 {
-				return false
-			}
-		}
 	}
 
 	place(tx, pos, c, user, ctx)
 	return placed(ctx)
+}
+
+// coralPlaceable checks the ground and the water a coral or a coral fan needs at the position passed: a block below
+// it with a solid top, and, if it stands in water at all, a full source block of it.
+func coralPlaceable(pos cube.Pos, tx *world.Tx) bool {
+	if !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		return false
+	}
+	if liquid, ok := tx.Liquid(pos); ok {
+		if water, ok := liquid.(Water); ok && water.Depth != 8 {
+			return false
+		}
+	}
+	return true
 }
 
 // HasLiquidDrops ...

@@ -1,7 +1,10 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // CoralFan is a fan of coral growing on the floor. Like every coral fan it has no collision at all: the 2026-09-14 BDS
@@ -18,6 +21,26 @@ type CoralFan struct {
 	// Direction is the raw coral_fan_direction state, either 0 or 1. The corpus does not resolve what the two values
 	// mean and the collision getter does not read them.
 	Direction int
+}
+
+// UseOnBlock stands the fan on the block below it. A fan clicked against a wall would be a CoralWallFan, which is
+// not placed: the BDS corpus does not resolve which cardinal each of its four coral_direction values is, so the
+// state is only carried through from a saved world.
+func (c CoralFan) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, c)
+	if !used || !coralPlaceable(pos, tx) {
+		return false
+	}
+
+	place(tx, pos, c, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (c CoralFan) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		breakBlockNoDrops(c, pos, tx)
+	}
 }
 
 // EncodeBlock ...

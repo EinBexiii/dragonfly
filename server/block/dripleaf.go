@@ -3,7 +3,9 @@ package block
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // BigDripleaf is a plant with a leaf that tips over when a player stands on it. It is either the leaf itself or one of
@@ -22,6 +24,19 @@ type BigDripleaf struct {
 // Model ...
 func (d BigDripleaf) Model() world.BlockModel {
 	return model.BigDripleaf{Head: d.Head, Tilt: model.DripleafTilt(d.Tilt.Uint8())}
+}
+
+// UseOnBlock places the leaf of the plant with its tip towards the player. The stem blocks below it are grown, not
+// placed.
+func (d BigDripleaf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, d)
+	if !used || !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		return false
+	}
+	d.Head, d.Tilt, d.Facing = true, NoneDripleafTilt(), user.Rotation().Direction().Opposite()
+
+	place(tx, pos, d, user, ctx)
+	return placed(ctx)
 }
 
 // EncodeBlock ...
@@ -47,6 +62,23 @@ type SmallDripleaf struct {
 	UpperPart bool
 	// Facing is the direction the leaves of the plant point in.
 	Facing cube.Direction
+}
+
+// UseOnBlock places both halves of the plant, with its leaves towards the player.
+func (d SmallDripleaf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, d)
+	if !used || !supportsVegetation(d, tx.Block(pos.Side(cube.FaceDown))) {
+		return false
+	}
+	upper := SmallDripleaf{UpperPart: true, Facing: user.Rotation().Direction().Opposite()}
+	if !replaceableWith(tx, pos.Side(cube.FaceUp), upper) {
+		return false
+	}
+	d.UpperPart, d.Facing = false, upper.Facing
+
+	place(tx, pos, d, user, ctx)
+	place(tx, pos.Side(cube.FaceUp), upper, user, ctx)
+	return placed(ctx)
 }
 
 // EncodeBlock ...

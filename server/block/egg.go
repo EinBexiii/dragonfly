@@ -1,8 +1,11 @@
 package block
 
 import (
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 // TurtleEgg is a clutch of one to four eggs that hatches into turtles.
@@ -18,6 +21,34 @@ type TurtleEgg struct {
 // Model ...
 func (t TurtleEgg) Model() world.BlockModel {
 	return model.TurtleEgg{}
+}
+
+// UseOnBlock adds a fourth egg at most to the eggs already in the block, and lays a single egg otherwise.
+func (t TurtleEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	if existing, ok := tx.Block(pos).(TurtleEgg); ok {
+		if existing.Count >= len(turtleEggCounts) {
+			return false
+		}
+		existing.Count++
+
+		place(tx, pos, existing, user, ctx)
+		return placed(ctx)
+	}
+	pos, _, used := firstReplaceable(tx, pos, face, t)
+	if !used || !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		return false
+	}
+	t.Count, t.Cracks = 1, NoEggCracks()
+
+	place(tx, pos, t, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (t TurtleEgg) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		breakBlockNoDrops(t, pos, tx)
+	}
 }
 
 // EncodeBlock ...
@@ -47,6 +78,25 @@ type SnifferEgg struct {
 // Model ...
 func (s SnifferEgg) Model() world.BlockModel {
 	return model.SnifferEgg{}
+}
+
+// UseOnBlock lays the egg on a block that carries it.
+func (s SnifferEgg) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, s)
+	if !used || !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		return false
+	}
+	s.Cracks = NoEggCracks()
+
+	place(tx, pos, s, user, ctx)
+	return placed(ctx)
+}
+
+// NeighbourUpdateTick ...
+func (s SnifferEgg) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
+	if !faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp) {
+		breakBlockNoDrops(s, pos, tx)
+	}
 }
 
 // EncodeBlock ...
