@@ -3,13 +3,19 @@
 ## How `next` is built
 
 `next` is never edited directly. It is `upstream/master` (df-mc/dragonfly) plus
-every branch below merged in with a merge commit, in the order listed. Each
+every branch in the Features through Documentation sections below merged in
+with a merge commit, in the order listed. Each
 branch is based on `upstream/master` unless it says otherwise, so any of them
 can be dropped or sent upstream on its own. `next` is rebuilt from that list
 whenever it changes; a branch that is not on the list is not in `next`.
 
 `upstream/master` is at the version named by the most recent `dragonfly:
 Updated to ...` commit below the merges.
+
+`next` remains the Minecraft 1.26.45 source line for backends. The separate
+1.26.50 preview below is excluded from its constituent list and rebuild tool.
+Check the upstream protocol version before a rebuild too: moving the base
+to a newer protocol is a coordinated upgrade, not routine fork maintenance.
 
 ## Rebuild tooling
 
@@ -95,3 +101,28 @@ Independent of the fork's features, candidates for upstream pull requests.
 | Branch | Adds |
 |---|---|
 | `docs/fork` | This file, the rebuild tools, and the fork maintainer agent. |
+
+## Protocol preview outside `next`
+
+These branches are not part of the `next` list. Do not add either to
+`tools/fork/mknext.sh`: the proxy moves to 1.26.50 before the backends, which
+must keep their 1.26.45 source line. A later backend upgrade is a separate,
+coordinated change.
+
+| Branch | Adds |
+|---|---|
+| `fix/26.50-compat` | The 1.26.50 source adaptations, based on `a36ed0edb548298ab482939e1c653e39f9683719`, the upstream base of this `next` snapshot. Keeps the renamed block interaction action ignored and expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319). Pins the gophertunnel preview for standalone builds. A constituent of the preview only. |
+| `next-26.50` | The `next` snapshot at `c7811091fcfd08b785fdb9e0acb5728d3c112aa4` with `fix/26.50-compat` merged in, for Minecraft 1.26.50 / protocol 2193. Composed separately without rebuilding or moving `next`. |
+
+The preview's root `go.mod` selects
+`github.com/EinBexiii/gophertunnel v0.0.0-20260915193041-cb7562a22ded`,
+the 26.50 integration retaining v1.61.0's corrections. With Go 1.26.5,
+`go build ./...` and `go vet ./...` verify the preview standalone. Replacements
+in a library are not inherited: consuming roots selecting this Dragonfly
+line must also replace `github.com/sandertv/gophertunnel` with that version.
+
+`DefaultBiome` remains explicitly empty. Gophertunnel defines it as a biome
+identifier and serialises the string unchanged, but Dragonfly's dimension
+interface supplies no default biome and void generation identifies none.
+The client's empty-name fallback is unverified; custom-dimension client
+validation is still needed before treating the preview as rollout-ready.
