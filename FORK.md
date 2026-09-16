@@ -48,6 +48,7 @@ branch into `next`; a full rebuild is a separate operation.
 | `feature/tack-items` | Saddle, horse armour, an entity's armour inventory, and armour rendered on an entity's body. |
 | `feature/entity-trading` | Trading with entities, on top of the inventory an entity carries. |
 | `feature/network-block-hashes` | Blocks go over the wire as the hash of their state instead of a palette index, so a client on a newer Minecraft version reads this server's world correctly. Chunk palettes, block updates, particles, sounds, falling blocks and item stacks in both directions; the crack particle picks its event by face since the data holds the whole hash. |
+| `feature/block-shapes` | Fences, panes, bars, tripwire and stairs go to the client in the shape it reads since 1.26.50: connections and corners worked out from the neighbours when the block is sent, in sub-chunks and block updates, with the blocks around a change and the border of a newly loaded chunk sent again. The world stores the plain state. Based on `next` at 275236cb, since it builds on the hash transport and the fork's fence and pane models. |
 
 ## Fixes not yet in upstream
 
