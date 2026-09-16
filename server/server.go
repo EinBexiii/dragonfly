@@ -513,6 +513,10 @@ func (srv *Server) defaultGameData() minecraft.GameData {
 
 		Items:        srv.itemEntries(),
 		CustomBlocks: srv.customBlocks,
+		// Blocks go over the wire as the hash of their state rather than as
+		// a position in the palette, so the ID is the same for every client
+		// version instead of shifting whenever the palette grows.
+		UseBlockNetworkIDHashes: true,
 		GameRules: []protocol.GameRule{
 			{Name: "naturalregeneration", Value: false},
 			{Name: "locatorBar", Value: false},
