@@ -57,6 +57,21 @@ func Encode(c *Chunk, e Encoding) SerialisedData {
 // EncodeSubChunk encodes a sub-chunk from a chunk into bytes. An Encoding may be passed to encode either for network or
 // disk purposed, the most notable difference being that the network encoding generally uses varints and no NBT.
 func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
+	return EncodeSubChunkShaped(c, e, ind, nil)
+}
+
+// Shaper replaces the network value of blocks whose shape depends on their
+// neighbours, so a sub-chunk can go out with shapes it does not store.
+type Shaper interface {
+	// Shaped reports whether blocks with this runtime ID have such a shape.
+	Shaped(rid uint32) bool
+	// Shape returns the network value of the block at x, y, z in the sub-chunk.
+	Shape(x, y, z byte, rid uint32) uint32
+}
+
+// EncodeSubChunkShaped is EncodeSubChunk with the shaper applied to every
+// storage that holds a shaped block. A nil shaper encodes the stored blocks.
+func EncodeSubChunkShaped(c *Chunk, e Encoding, ind int, shaper Shaper) []byte {
 	buf := pool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
@@ -65,8 +80,13 @@ func EncodeSubChunk(c *Chunk, e Encoding, ind int) []byte {
 
 	s := c.sub[ind]
 	_, _ = buf.Write([]byte{SubChunkVersion, byte(len(s.storages)), uint8(ind + (c.r[0] >> 4))})
+	bpe := BlockPaletteEncoding{Blocks: c.br}
 	for _, storage := range s.storages {
-		encodePalettedStorage(buf, storage, nil, e, BlockPaletteEncoding{Blocks: c.br})
+		if shaper != nil && shaped(storage.palette, shaper) {
+			encodePalettedStorage(buf, shapeStorage(storage, shaper, bpe), nil, e, networkValues)
+			continue
+		}
+		encodePalettedStorage(buf, storage, nil, e, bpe)
 	}
 	sub := make([]byte, buf.Len())
 	_, _ = buf.Read(sub)
@@ -109,4 +129,33 @@ func encodePalettedStorage(buf *bytes.Buffer, storage, previous *PalettedStorage
 	_, _ = buf.Write(b)
 
 	e.encodePalette(buf, storage.palette, pe)
+}
+
+// shaped reports whether a palette holds a block the shaper shapes.
+func shaped(p *Palette, shaper Shaper) bool {
+	for _, v := range p.values {
+		if shaper.Shaped(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// shapeStorage builds the storage of network values that goes out for a
+// storage with shaped blocks. The stored storage is left as it is.
+func shapeStorage(storage *PalettedStorage, shaper Shaper, bpe BlockPaletteEncoding) *PalettedStorage {
+	out := emptyStorage(bpe.network(storage.At(0, 0, 0)))
+	for x := byte(0); x < 16; x++ {
+		for y := byte(0); y < 16; y++ {
+			for z := byte(0); z < 16; z++ {
+				rid := storage.At(x, y, z)
+				if shaper.Shaped(rid) {
+					out.Set(x, y, z, shaper.Shape(x, y, z, rid))
+				} else {
+					out.Set(x, y, z, bpe.network(rid))
+				}
+			}
+		}
+	}
+	return out
 }

@@ -1126,21 +1126,18 @@ func (s *Session) ViewBrewingUpdate(prevBrewTime, brewTime time.Duration, prevFu
 
 // ViewBlockUpdate ...
 func (s *Session) ViewBlockUpdate(pos cube.Pos, b world.Block, layer int) {
-	blockPos := protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])}
-	s.writePacket(&packet.UpdateBlock{
-		Position:          blockPos,
-		NewBlockRuntimeID: networkBlockID(s.br, b),
-		Flags:             packet.BlockUpdateNetwork,
-		Layer:             uint32(layer),
-	})
+	s.sendBlock(pos, b, layer)
 	if v, ok := b.(world.NBTer); ok {
 		if nbtData := v.EncodeNBT(); nbtData != nil {
 			nbtData["x"], nbtData["y"], nbtData["z"] = int32(pos.X()), int32(pos.Y()), int32(pos.Z())
 			s.writePacket(&packet.BlockActorData{
-				Position: blockPos,
+				Position: protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
 				NBTData:  nbtData,
 			})
 		}
+	}
+	if layer == 0 {
+		s.resendShaped(pos)
 	}
 }
 
