@@ -20,9 +20,10 @@ const subChunkRequests = true
 func (s *Session) ViewChunk(pos world.ChunkPos, dim world.Dimension, blockEntities map[cube.Pos]world.Block, c *chunk.Chunk) {
 	if !s.conn.ClientCacheEnabled() {
 		s.sendNetworkChunk(pos, dim, c, blockEntities)
-		return
+	} else {
+		s.sendBlobHashes(pos, dim, c, blockEntities)
 	}
-	s.sendBlobHashes(pos, dim, c, blockEntities)
+	s.resendBorders(pos)
 }
 
 // ViewSubChunks ...
@@ -38,10 +39,8 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultIndexOutOfBounds, Offset: offset})
 			continue
 		}
-		col, ok := s.chunkLoader.Chunk(world.ChunkPos{
-			centre.X() + int32(offset[0]),
-			centre.Z() + int32(offset[2]),
-		})
+		pos := world.ChunkPos{centre.X() + int32(offset[0]), centre.Z() + int32(offset[2])}
+		col, ok := s.chunkLoader.Chunk(pos)
 		if !ok {
 			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultChunkNotFound, Offset: offset})
 			continue
@@ -51,7 +50,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 			maps = chunk.NewSubChunkHeightMaps(col.Chunk)
 			heightMaps[col.Chunk] = maps
 		}
-		entries = append(entries, s.subChunkEntry(offset, ind, col, maps, transaction))
+		entries = append(entries, s.subChunkEntry(offset, ind, pos, col, maps, transaction))
 	}
 	if s.conn.ClientCacheEnabled() && len(transaction) > 0 {
 		s.blobMu.Lock()
@@ -68,7 +67,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 }
 
 func (s *Session) subChunkEntry(
-	offset protocol.SubChunkOffset, ind int16, col *world.Column, heightMaps chunk.SubChunkHeightMaps,
+	offset protocol.SubChunkOffset, ind int16, pos world.ChunkPos, col *world.Column, heightMaps chunk.SubChunkHeightMaps,
 	transaction map[uint64]struct{},
 ) protocol.SubChunkEntry {
 	subMapType, subMap := heightMaps.At(ind)
@@ -89,7 +88,8 @@ func (s *Session) subChunkEntry(
 		}
 	}
 
-	serialisedSubChunk := chunk.EncodeSubChunk(col.Chunk, chunk.NetworkEncoding, int(ind))
+	origin := cube.Pos{int(pos[0]) << 4, int(col.Range()[0]) + int(ind)<<4, int(pos[1]) << 4}
+	serialisedSubChunk := chunk.EncodeSubChunkShaped(col.Chunk, chunk.NetworkEncoding, int(ind), subChunkShaper{s: s, origin: origin})
 
 	blockEntityBuf := bytes.NewBuffer(nil)
 	enc := nbt.NewEncoderWithEncoding(blockEntityBuf, nbt.NetworkLittleEndian)

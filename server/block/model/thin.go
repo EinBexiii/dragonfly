@@ -23,7 +23,7 @@ func (t Thin) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 	boxes := make([]cube.BBox, 0, 2)
 
 	// Check if we have any connections on the Z axis
-	connectWest, connectEast := t.checkConnection(pos, cube.FaceWest, s), t.checkConnection(pos, cube.FaceEast, s)
+	connectWest, connectEast := t.Connects(pos, cube.FaceWest, s), t.Connects(pos, cube.FaceEast, s)
 	if connectWest || connectEast {
 		box := cube.Box(0, 0, 0, 1, thinHeight, 1).Stretch(cube.Z, -thinInset)
 		if !connectWest {
@@ -35,7 +35,7 @@ func (t Thin) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 	}
 
 	// Check if we have any connections on the X axis
-	connectNorth, connectSouth := t.checkConnection(pos, cube.FaceNorth, s), t.checkConnection(pos, cube.FaceSouth, s)
+	connectNorth, connectSouth := t.Connects(pos, cube.FaceNorth, s), t.Connects(pos, cube.FaceSouth, s)
 	if connectNorth || connectSouth {
 		box := cube.Box(0, 0, 0, 1, thinHeight, 1).Stretch(cube.X, -thinInset)
 		if !connectNorth {
@@ -59,8 +59,8 @@ func (t Thin) FaceSolid(_ cube.Pos, face cube.Face, _ world.BlockSource) bool {
 	return face == cube.FaceDown
 }
 
-// checkConnection checks if the block at the given position and face has a connection to the current thin block.
-func (t Thin) checkConnection(pos cube.Pos, face cube.Face, s world.BlockSource) bool {
+// Connects reports whether the thin block at pos joins the block on the given face.
+func (t Thin) Connects(pos cube.Pos, face cube.Face, s world.BlockSource) bool {
 	sidePos := pos.Side(face)
 	sideBlock := s.Block(sidePos)
 	_, isThin := sideBlock.Model().(Thin)

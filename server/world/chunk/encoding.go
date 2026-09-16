@@ -53,6 +53,12 @@ func (biomePaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 func (biomePaletteEncoding) network(v uint32) uint32         { return v }
 func (biomePaletteEncoding) runtime(v uint32) (uint32, bool) { return v, true }
 
+// networkValues is the palette encoding of a storage that already holds the
+// values the client reads.
+var networkValues networkValueEncoding
+
+type networkValueEncoding struct{ biomePaletteEncoding }
+
 // BlockPaletteEncoding implements the encoding of block palettes to disk. It requires a BlockRegistry for converting
 // between runtime IDs and block states.
 type BlockPaletteEncoding struct {
