@@ -19,7 +19,10 @@ type loadedBlocks struct{ s *Session }
 
 func (l loadedBlocks) Block(pos cube.Pos) world.Block {
 	col, ok := l.s.chunkLoader.Chunk(world.ChunkPos{int32(pos[0] >> 4), int32(pos[2] >> 4)})
-	if r := col.Range(); !ok || pos[1] < r[0] || pos[1] > r[1] {
+	if !ok {
+		return block.Air{}
+	}
+	if r := col.Range(); pos[1] < r[0] || pos[1] > r[1] {
 		return block.Air{}
 	}
 	return l.s.br.BlockByRuntimeIDOrAir(col.Block(uint8(pos[0]&15), int16(pos[1]), uint8(pos[2]&15), 0))
@@ -79,38 +82,34 @@ func (s *Session) resendShaped(pos cube.Pos) {
 	}
 }
 
-// resendBorders sends the shaped blocks in the two columns of each loaded
-// neighbour that face the chunk at pos, since they were shaped while pos was
-// still missing.
+// resendBorders sends the shaped blocks of each loaded neighbour again that
+// sit within two of the chunk at pos, since they were shaped while pos was
+// still missing. Diagonal neighbours count: a fence follows a stair whose
+// corner follows a block in the chunk beyond.
 func (s *Session) resendBorders(pos world.ChunkPos) {
-	for _, side := range [4][2]int32{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
-		col, ok := s.chunkLoader.Chunk(world.ChunkPos{pos[0] + side[0], pos[1] + side[1]})
-		if !ok {
-			continue
-		}
-		// The two local columns of the neighbour nearest to pos.
-		var xs, zs [2]byte
-		switch {
-		case side[0] == 1:
-			xs, zs = [2]byte{0, 1}, [2]byte{0, 15}
-		case side[0] == -1:
-			xs, zs = [2]byte{15, 14}, [2]byte{0, 15}
-		case side[1] == 1:
-			xs, zs = [2]byte{0, 15}, [2]byte{0, 1}
-		default:
-			xs, zs = [2]byte{0, 15}, [2]byte{15, 14}
-		}
-		base := cube.Pos{int(pos[0]+side[0]) << 4, int(col.Range()[0]), int(pos[1]+side[1]) << 4}
-		for ind, sub := range col.Sub() {
-			if sub.Empty() || !s.shapedLayer(sub.Layer(0)) {
+	for dx := int32(-1); dx <= 1; dx++ {
+		for dz := int32(-1); dz <= 1; dz++ {
+			if dx == 0 && dz == 0 {
 				continue
 			}
-			for y := byte(0); y < 16; y++ {
-				for _, x := range s.span(xs, side[0] != 0) {
-					for _, z := range s.span(zs, side[1] != 0) {
-						p := base.Add(cube.Pos{int(x), ind<<4 + int(y), int(z)})
-						if b, ok := s.br.BlockByRuntimeIDOrAir(sub.Block(x, y, z, 0)).(world.NeighbourShaped); ok {
-							s.sendBlock(p, b, 0)
+			at := world.ChunkPos{pos[0] + dx, pos[1] + dz}
+			col, ok := s.chunkLoader.Chunk(at)
+			if !ok {
+				continue
+			}
+			xs, zs := edge(-dx), edge(-dz)
+			base := cube.Pos{int(at[0]) << 4, int(col.Range()[0]), int(at[1]) << 4}
+			for ind, sub := range col.Sub() {
+				if sub.Empty() || !s.shapedLayer(sub.Layer(0)) {
+					continue
+				}
+				for y := byte(0); y < 16; y++ {
+					for _, x := range xs {
+						for _, z := range zs {
+							p := base.Add(cube.Pos{int(x), ind<<4 + int(y), int(z)})
+							if b, ok := s.br.BlockByRuntimeIDOrAir(sub.Block(x, y, z, 0)).(world.NeighbourShaped); ok {
+								s.sendBlock(p, b, 0)
+							}
 						}
 					}
 				}
@@ -118,6 +117,21 @@ func (s *Session) resendBorders(pos world.ChunkPos) {
 		}
 	}
 }
+
+// edge is the local coordinates of a neighbour chunk nearest to the chunk on
+// the given side: the two rows on that side, or the whole chunk when the side
+// is not along this axis.
+func edge(side int32) []byte {
+	switch side {
+	case 1:
+		return []byte{15, 14}
+	case -1:
+		return []byte{0, 1}
+	}
+	return whole[:]
+}
+
+var whole = [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 // shapedLayer reports whether a storage holds any shaped block.
 func (s *Session) shapedLayer(storage *chunk.PalettedStorage) bool {
@@ -130,17 +144,13 @@ func (s *Session) shapedLayer(storage *chunk.PalettedStorage) bool {
 	return false
 }
 
-// span is the two named columns when the axis crosses the border, or the
-// whole edge when it runs along it.
-func (*Session) span(v [2]byte, across bool) []byte {
-	if across {
-		return v[:]
+// encodeChunk encodes a whole chunk for the network with its blocks shaped.
+func (s *Session) encodeChunk(pos world.ChunkPos, c *chunk.Chunk) chunk.SerialisedData {
+	d := chunk.SerialisedData{SubChunks: make([][]byte, len(c.Sub()))}
+	for i := range d.SubChunks {
+		origin := cube.Pos{int(pos[0]) << 4, int(c.Range()[0]) + i<<4, int(pos[1]) << 4}
+		d.SubChunks[i] = chunk.EncodeSubChunkShaped(c, chunk.NetworkEncoding, i, subChunkShaper{s: s, origin: origin})
 	}
-	out := make([]byte, 0, 16)
-	for i := v[0]; ; i++ {
-		out = append(out, i)
-		if i == v[1] {
-			return out
-		}
-	}
+	d.Biomes = chunk.EncodeBiomes(c, chunk.NetworkEncoding)
+	return d
 }

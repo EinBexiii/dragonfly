@@ -150,7 +150,7 @@ func (s *Session) sendBlobHashes(pos world.ChunkPos, dim world.Dimension, c *chu
 	}
 
 	var (
-		data   = chunk.Encode(c, chunk.NetworkEncoding)
+		data   = s.encodeChunk(pos, c)
 		count  = uint32(len(data.SubChunks))
 		blobs  = append(data.SubChunks, data.Biomes)
 		hashes = make([]uint64, len(blobs))
@@ -210,7 +210,7 @@ func (s *Session) sendNetworkChunk(pos world.ChunkPos, dim world.Dimension, c *c
 		return
 	}
 
-	data := chunk.Encode(c, chunk.NetworkEncoding)
+	data := s.encodeChunk(pos, c)
 	chunkBuf := bytes.NewBuffer(nil)
 	for _, s := range data.SubChunks {
 		_, _ = chunkBuf.Write(s)
