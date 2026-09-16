@@ -47,6 +47,7 @@ branch into `next`; a full rebuild is a separate operation.
 | `feature/entity-target` | A mob's target is reported to viewers. |
 | `feature/tack-items` | Saddle, horse armour, an entity's armour inventory, and armour rendered on an entity's body. |
 | `feature/entity-trading` | Trading with entities, on top of the inventory an entity carries. |
+| `feature/network-block-hashes` | Blocks go over the wire as the hash of their state instead of a palette index, so a client on a newer Minecraft version reads this server's world correctly. Chunk palettes, block updates, particles, sounds, falling blocks and item stacks in both directions; the crack particle picks its event by face since the data holds the whole hash. |
 
 ## Fixes not yet in upstream
 
