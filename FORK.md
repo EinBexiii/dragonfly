@@ -114,7 +114,7 @@ ones still on 1.26.45 keep building `next` as it is.
 
 | Branch | Adds |
 |---|---|
-| `fix/26.50-compat` | The 1.26.50 source adaptations, based on `a36ed0edb548298ab482939e1c653e39f9683719`, the upstream base of `next`. Keeps the renamed block interaction action ignored and expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319). Pins the gophertunnel the proxy runs. A constituent of the preview only. |
+| `fix/26.50-compat` | The 1.26.50 source adaptations on gophertunnel v1.62.0, the 1.26.50 release. Keeps the renamed block interaction action ignored, expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319), and has the reusable sub-chunk height maps of `perf/chunk-height-maps` produce the release's `protocol.HeightMap`, which is why it is cut from `next` at d17aacd2 rather than from the upstream base. A constituent of the preview only. |
 | `next-26.50` | `next` with `fix/26.50-compat` merged in, for Minecraft 1.26.50 / protocol 2193. Recomposed from the current `next` whenever a backend needs it; `next` itself does not move. |
 
 The preview keeps the 1.26.45 block palette on purpose. Block IDs go out as
@@ -124,12 +124,11 @@ correctly, the saved world stays as it is, and a player transfers between a
 1.26.45 and a preview backend without a reconnect: the proxy keys the
 palette on the hash flag and the custom blocks, both equal on either side.
 
-The preview's root `go.mod` replaces gophertunnel with
-`github.com/EinBexiii/gophertunnel v0.0.0-20260915213352-5ce57846ee61`, the
-exact commit the proxy is built with: the proxy takes a backend as its own
-build only on an exact match. Replacements in a library are not inherited,
-so a server selecting this line must carry the same replace. With Go
-1.26.5, `go build ./...` and `go vet ./...` verify the preview standalone.
+The preview requires `github.com/sandertv/gophertunnel v1.62.0`, the
+1.26.50 release the proxy is built with, and no replacement: the proxy takes
+a backend as its own build only on an exact module version match, so a
+server selecting this line must resolve the same version. With Go 1.26.5,
+`go build ./...` and `go vet ./...` verify the preview standalone.
 
 `DefaultBiome` remains explicitly empty. Gophertunnel defines it as a biome
 identifier and serialises the string unchanged, but Dragonfly's dimension
