@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/brentp/intintmap"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/segmentio/fasthash/fnv1"
 )
@@ -62,9 +63,12 @@ type BlockRegistry interface {
 	// BlockHash returns a unique identifier of the block including the block states. The hash is internal to Dragonfly
 	// and is used for fast map lookups; it does not need to match any in-game identifiers.
 	BlockHash(b Block) uint64
-	// RuntimeIDToHash resolves a runtime ID to its network block hash.
+	// RuntimeIDToHash resolves a runtime ID to the network hash the client
+	// reads for the block on its own: the hash of its state, or, for a
+	// NeighbourShaped block, of the shape it has with nothing around it.
 	RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool)
-	// HashToRuntimeID resolves a network block hash to a runtime ID.
+	// HashToRuntimeID resolves a network block hash to a runtime ID, the
+	// hash of the stored state or the one RuntimeIDToHash hands out.
 	HashToRuntimeID(hash uint32) (rid uint32, ok bool)
 }
 
@@ -420,6 +424,26 @@ func (br *BasicBlockRegistry) Finalize() {
 	}
 	if !foundAir {
 		panic("BlockRegistry.Finalize: no minecraft:air block state registered")
+	}
+	// A block shaped by its neighbours goes out without a position too, in
+	// item stacks, particles and falling blocks, and there it has the shape
+	// it has on its own: no connections, no corner. That state is not in the
+	// palette, so it becomes the runtime ID's network hash and resolves back
+	// to it, next to the stored state's hash.
+	alone := blockSource(func(cube.Pos) Block { return br.blocks[br.airRID] })
+	for idx, b := range br.blocks {
+		shaped, ok := b.(NeighbourShaped)
+		if !ok {
+			continue
+		}
+		rid := uint32(idx)
+		h := NetworkBlockHash(shaped.ShapedState(cube.Pos{}, alone))
+		if other, taken := br.networkhashToRids[h]; taken && other != rid {
+			name, properties := b.EncodeBlock()
+			panic(fmt.Sprintf("network block hash collision for the lone shape of (%s %+v) and %#v", name, properties, br.blocks[other]))
+		}
+		br.networkhashToRids[h] = rid
+		br.ridsToNetworkhash[rid] = h
 	}
 	br.finalized = true
 }

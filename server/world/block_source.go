@@ -8,6 +8,11 @@ type BlockSource interface {
 	Block(cube.Pos) Block
 }
 
+// blockSource is a BlockSource made of a function.
+type blockSource func(cube.Pos) Block
+
+func (f blockSource) Block(pos cube.Pos) Block { return f(pos) }
+
 // worldSource is a wrapper around a world transaction that implements BlockSource.
 type worldSource struct{ tx *Tx }
 
