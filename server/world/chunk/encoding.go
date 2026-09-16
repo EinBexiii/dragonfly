@@ -23,6 +23,10 @@ type (
 	paletteEncoding interface {
 		encode(buf *bytes.Buffer, v uint32)
 		decode(buf *bytes.Buffer) (uint32, error)
+		// network converts a palette value to what the client reads over the
+		// network, and runtime converts it back.
+		network(v uint32) uint32
+		runtime(v uint32) (uint32, bool)
 	}
 )
 
@@ -46,6 +50,8 @@ func (biomePaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 	var v uint32
 	return v, binary.Read(buf, binary.LittleEndian, &v)
 }
+func (biomePaletteEncoding) network(v uint32) uint32         { return v }
+func (biomePaletteEncoding) runtime(v uint32) (uint32, bool) { return v, true }
 
 // BlockPaletteEncoding implements the encoding of block palettes to disk. It requires a BlockRegistry for converting
 // between runtime IDs and block states.
@@ -55,6 +61,16 @@ type BlockPaletteEncoding struct {
 
 func (bpe BlockPaletteEncoding) encode(buf *bytes.Buffer, v uint32) {
 	_ = nbt.NewEncoderWithEncoding(buf, nbt.LittleEndian).Encode(bpe.EncodeBlockState(v))
+}
+
+// network returns the block's network hash: the client resolves it against
+// its own palette, so it does not depend on the client version.
+func (bpe BlockPaletteEncoding) network(v uint32) uint32 {
+	h, _ := bpe.Blocks.RuntimeIDToHash(v)
+	return h
+}
+func (bpe BlockPaletteEncoding) runtime(v uint32) (uint32, bool) {
+	return bpe.Blocks.HashToRuntimeID(v)
 }
 func (bpe BlockPaletteEncoding) decode(buf *bytes.Buffer) (uint32, error) {
 	var m map[string]any
@@ -154,15 +170,15 @@ func (diskEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, e pa
 type networkEncoding struct{}
 
 func (networkEncoding) network() byte { return 1 }
-func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, _ paletteEncoding) {
+func (networkEncoding) encodePalette(buf *bytes.Buffer, p *Palette, e paletteEncoding) {
 	if p.size != 0 {
 		_ = protocol.WriteVarint32(buf, int32(p.Len()))
 	}
 	for _, val := range p.values {
-		_ = protocol.WriteVarint32(buf, int32(val))
+		_ = protocol.WriteVarint32(buf, int32(e.network(val)))
 	}
 }
-func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _ paletteEncoding) (*Palette, error) {
+func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, e paletteEncoding) (*Palette, error) {
 	var paletteCount int32 = 1
 	if blockSize != 0 {
 		if err := protocol.Varint32(buf, &paletteCount); err != nil {
@@ -178,7 +194,11 @@ func (networkEncoding) decodePalette(buf *bytes.Buffer, blockSize paletteSize, _
 		if err := protocol.Varint32(buf, &temp); err != nil {
 			return nil, fmt.Errorf("error decoding palette entry: %w", err)
 		}
-		blocks[i] = uint32(temp)
+		v, ok := e.runtime(uint32(temp))
+		if !ok {
+			return nil, fmt.Errorf("unknown palette entry %v", uint32(temp))
+		}
+		blocks[i] = v
 	}
 	return &Palette{values: blocks, size: blockSize}, nil
 }
