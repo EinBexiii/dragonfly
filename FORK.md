@@ -108,21 +108,27 @@ Independent of the fork's features, candidates for upstream pull requests.
 ## Protocol preview outside `next`
 
 These branches are not part of the `next` list. Do not add either to
-`tools/fork/mknext.sh`: the proxy moves to 1.26.50 before the backends, which
-must keep their 1.26.45 source line. A later backend upgrade is a separate,
-coordinated change.
+`tools/fork/mknext.sh`: backends move to 1.26.50 one at a time, and the
+ones still on 1.26.45 keep building `next` as it is.
 
 | Branch | Adds |
 |---|---|
-| `fix/26.50-compat` | The 1.26.50 source adaptations, based on `a36ed0edb548298ab482939e1c653e39f9683719`, the upstream base of this `next` snapshot. Keeps the renamed block interaction action ignored and expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319). Pins the gophertunnel preview for standalone builds. A constituent of the preview only. |
-| `next-26.50` | The `next` snapshot at `c7811091fcfd08b785fdb9e0acb5728d3c112aa4` with `fix/26.50-compat` merged in, for Minecraft 1.26.50 / protocol 2193. Composed separately without rebuilding or moving `next`. |
+| `fix/26.50-compat` | The 1.26.50 source adaptations, based on `a36ed0edb548298ab482939e1c653e39f9683719`, the upstream base of `next`. Keeps the renamed block interaction action ignored and expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319). Pins the gophertunnel the proxy runs. A constituent of the preview only. |
+| `next-26.50` | `next` with `fix/26.50-compat` merged in, for Minecraft 1.26.50 / protocol 2193. Recomposed from the current `next` whenever a backend needs it; `next` itself does not move. |
 
-The preview's root `go.mod` selects
-`github.com/EinBexiii/gophertunnel v0.0.0-20260915193041-cb7562a22ded`,
-the 26.50 integration retaining v1.61.0's corrections. With Go 1.26.5,
-`go build ./...` and `go vet ./...` verify the preview standalone. Replacements
-in a library are not inherited: consuming roots selecting this Dragonfly
-line must also replace `github.com/sandertv/gophertunnel` with that version.
+The preview keeps the 1.26.45 block palette on purpose. Block IDs go out as
+state hashes (`feature/network-block-hashes`) and the reshaped blocks in the
+1.26.50 shape (`feature/block-shapes`), so a 1.26.50 client reads the world
+correctly, the saved world stays as it is, and a player transfers between a
+1.26.45 and a preview backend without a reconnect: the proxy keys the
+palette on the hash flag and the custom blocks, both equal on either side.
+
+The preview's root `go.mod` replaces gophertunnel with
+`github.com/EinBexiii/gophertunnel v0.0.0-20260915213352-5ce57846ee61`, the
+exact commit the proxy is built with: the proxy takes a backend as its own
+build only on an exact match. Replacements in a library are not inherited,
+so a server selecting this line must carry the same replace. With Go
+1.26.5, `go build ./...` and `go vet ./...` verify the preview standalone.
 
 `DefaultBiome` remains explicitly empty. Gophertunnel defines it as a biome
 identifier and serialises the string unchanged, but Dragonfly's dimension
