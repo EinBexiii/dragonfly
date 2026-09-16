@@ -22,29 +22,29 @@ func NewSubChunkHeightMaps(c *Chunk) SubChunkHeightMaps {
 	return SubChunkHeightMaps{c: c, heights: heights, lowest: lowest, highest: highest}
 }
 
-// At returns the height-map type and optional per-column data for index.
-func (m SubChunkHeightMaps) At(index int16) (byte, []int8) {
+// At returns the height-map type for index and, when the surface crosses
+// that sub-chunk, the height of every column relative to it.
+func (m SubChunkHeightMaps) At(index int16) (byte, protocol.Optional[protocol.HeightMap]) {
 	switch {
 	case index < m.lowest:
-		return protocol.HeightMapDataTooHigh, nil
+		return protocol.HeightMapDataTooHigh, protocol.Optional[protocol.HeightMap]{}
 	case index > m.highest:
-		return protocol.HeightMapDataTooLow, nil
+		return protocol.HeightMapDataTooLow, protocol.Optional[protocol.HeightMap]{}
 	}
-	heights := make([]int8, 256)
-	for x := uint8(0); x < 16; x++ {
-		for z := uint8(0); z < 16; z++ {
+	var heights protocol.HeightMap
+	for z := uint8(0); z < 16; z++ {
+		for x := uint8(0); x < 16; x++ {
 			y := m.heights.At(x, z)
 			columnIndex := m.c.SubIndex(y)
-			i := uint16(z)<<4 | uint16(x)
 			switch {
 			case columnIndex > index:
-				heights[i] = 16
+				heights[z][x] = 16
 			case columnIndex < index:
-				heights[i] = -1
+				heights[z][x] = -1
 			default:
-				heights[i] = int8(y - m.c.SubY(columnIndex))
+				heights[z][x] = int8(y - m.c.SubY(columnIndex))
 			}
 		}
 	}
-	return protocol.HeightMapDataHasData, heights
+	return protocol.HeightMapDataHasData, protocol.Option(heights)
 }
