@@ -48,7 +48,6 @@ branch into `next`; a full rebuild is a separate operation.
 | `feature/tack-items` | Saddle, horse armour, an entity's armour inventory, and armour rendered on an entity's body. |
 | `feature/entity-trading` | Trading with entities, on top of the inventory an entity carries. |
 | `feature/network-block-hashes` | Blocks go over the wire as the hash of their state instead of a palette index, so a client on a newer Minecraft version reads this server's world correctly. Chunk palettes, block updates, particles, sounds, falling blocks and item stacks in both directions; the crack particle picks its event by face since the data holds the whole hash. |
-| `feature/block-shapes` | Fences, panes, bars, tripwire and stairs go to the client in the shape it reads since 1.26.50: connections and corners worked out from the neighbours when the block is sent, in sub-chunks and block updates, with the blocks around a change and the border of a newly loaded chunk sent again. The world stores the plain state. Based on `next` at 275236cb, since it builds on the hash transport and the fork's fence and pane models. |
 
 ## Fixes not yet in upstream
 
@@ -77,15 +76,17 @@ the list once upstream merges it.
 | `fix/block-states` | Blocks the fork had but whose saved states it refused decode: exploding tnt, ladders and wall signs, banners and glazed terracotta with any facing_direction, occupied beds, the deprecated property on bone and hay blocks, item frame map and photo bits, the multiple grindstone attachment, powered lecterns, a portal without an axis, purpur on every axis; the poplar wood type with its three leaf colours. No box moves for a state the fork already accepted; directions hash in three bits. | not yet sent |
 | `fix/blocks-shaped` | Nineteen block kinds with their own collision, read from the Bedrock server (Rook's reviews/2026-09-14-shaped-blocks-bds-astra.md): hanging signs, shelves, bell, dripleaves, pointed dripstone, amethyst buds and cluster, coral fans, copper bulbs, lightning rods, respawn anchor, turtle and sniffer eggs, chiseled bookshelf, sculk vein, glow lichen, resin clump, pale moss carpet, leaf litter, mangrove and hanging roots, frog spawn, pitcher plant and crop. Decode, collision, creative items and placement: each block is placed the way it was clicked, turning its front to the player or growing out of the face it was put on, and breaks when what carried it is gone; a copper bulb toggles on the rising edge of a redstone signal and lights the room, dimmed by its oxidation. Saved block-entity data still rides through untouched, and there is still no break info and no oxidation tick. A coral wall fan is decoded but never placed: the corpus does not resolve which cardinal each of its four coral_direction values is. Scaffolding stays unknown: Bedrock collides it only for an actor standing on its top, which the collision interface cannot see. | not yet sent |
 
-## Fixes on the fork's own features
+## Branches on the fork's own work
 
-Built on `feature/death-animation` and `feature/integration`, so they cannot
-go upstream on their own; they follow those branches.
+Built on other fork branches, so they cannot go upstream on their own; each
+names what it follows. The first two follow `feature/death-animation` and
+`feature/integration`.
 
-| Branch | Fixes |
+| Branch | Adds or fixes |
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
 | `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that only takes the frames real time has passed, that a new block may carry at most two of (naming another block earns nothing), and that an episode already underway may bank so delayed inputs are all credited; a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
+| `feature/block-shapes` | Fences, panes, bars, tripwire and stairs go to the client in the shape it reads since 1.26.50: connections and corners worked out from the neighbours when the block is sent, in sub-chunks and block updates, with the blocks around a change and the border of a newly loaded chunk sent again. The world stores the plain state. Follows `feature/network-block-hashes` for the hash transport and `fix/fence-gate-connection` and `fix/hub-blocks` for the fence and pane rules; cut from `next` at 275236cb. |
 
 ## Additions not yet sent upstream
 
