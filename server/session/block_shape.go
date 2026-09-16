@@ -1,6 +1,8 @@
 package session
 
 import (
+	"maps"
+
 	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -56,9 +58,14 @@ func (sh subChunkShaper) Shape(x, y, z byte, rid uint32) uint32 {
 
 // sendBlock sends the block at pos as the client should see it.
 func (s *Session) sendBlock(pos cube.Pos, b world.Block, layer int) {
+	s.writeBlock(pos, s.blockID(pos, b), layer)
+}
+
+// writeBlock sends a block ID for pos.
+func (s *Session) writeBlock(pos cube.Pos, id uint32, layer int) {
 	s.writePacket(&packet.UpdateBlock{
 		Position:          protocol.BlockPos{int32(pos[0]), int32(pos[1]), int32(pos[2])},
-		NewBlockRuntimeID: s.blockID(pos, b),
+		NewBlockRuntimeID: id,
 		Flags:             packet.BlockUpdateNetwork,
 		Layer:             uint32(layer),
 	})
@@ -82,11 +89,31 @@ func (s *Session) resendShaped(pos cube.Pos) {
 	}
 }
 
-// resendBorders sends the shaped blocks of each loaded neighbour again that
-// sit within two of the chunk at pos, since they were shaped while pos was
-// still missing. Diagonal neighbours count: a fence follows a stair whose
+// chunkless reads blocks as they were sent before the chunk at pos arrived:
+// air there, the loaded chunks elsewhere. That is what the client holds, with
+// one exception: a neighbour that left the loader and changed while it was
+// away is compared as it is now, so a block shaped by that change waits for
+// the next update near it.
+type chunkless struct {
+	src world.BlockSource
+	pos world.ChunkPos
+}
+
+func (c chunkless) Block(p cube.Pos) world.Block {
+	if (world.ChunkPos{int32(p[0] >> 4), int32(p[2] >> 4)}) == c.pos {
+		return block.Air{}
+	}
+	return c.src.Block(p)
+}
+
+// resendBorders sends the shaped blocks of each loaded neighbour again whose
+// shape the chunk at pos changes: those within two of it were shaped while
+// pos was still missing, as if it held air, and most of them look the same
+// either way. Diagonal neighbours count: a fence follows a stair whose
 // corner follows a block in the chunk beyond.
 func (s *Session) resendBorders(pos world.ChunkPos) {
+	now := loadedBlocks{s}
+	before := chunkless{now, pos}
 	for dx := int32(-1); dx <= 1; dx++ {
 		for dz := int32(-1); dz <= 1; dz++ {
 			if dx == 0 && dz == 0 {
@@ -106,9 +133,14 @@ func (s *Session) resendBorders(pos world.ChunkPos) {
 				for y := byte(0); y < 16; y++ {
 					for _, x := range xs {
 						for _, z := range zs {
+							b, ok := s.br.BlockByRuntimeIDOrAir(sub.Block(x, y, z, 0)).(world.NeighbourShaped)
+							if !ok {
+								continue
+							}
 							p := base.Add(cube.Pos{int(x), ind<<4 + int(y), int(z)})
-							if b, ok := s.br.BlockByRuntimeIDOrAir(sub.Block(x, y, z, 0)).(world.NeighbourShaped); ok {
-								s.sendBlock(p, b, 0)
+							name, properties := b.ShapedState(p, now)
+							if _, sent := b.ShapedState(p, before); !maps.Equal(properties, sent) {
+								s.writeBlock(p, world.NetworkBlockHash(name, properties), 0)
 							}
 						}
 					}
