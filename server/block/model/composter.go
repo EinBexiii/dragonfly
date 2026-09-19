@@ -16,7 +16,13 @@ type Composter struct {
 
 // BBox ...
 func (c Composter) BBox(_ cube.Pos, _ world.BlockSource) []cube.BBox {
-	compostHeight := math.Abs(math.Min(float64(c.Level), 7)*0.125 - 0.0625)
+	// An empty composter's floor is the base plate alone; the first level
+	// of compost adds a sixteenth, each further level an eighth, the ready
+	// level none (BDS collector 0x148ea3830).
+	compostHeight := 0.0
+	if c.Level > 0 {
+		compostHeight = math.Min(float64(c.Level), 7)*0.125 - 0.0625
+	}
 	return []cube.BBox{
 		cube.Box(0, 0, 0, 1, 1, 0.125),
 		cube.Box(0, 0, 0.875, 1, 1, 1),

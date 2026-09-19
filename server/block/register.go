@@ -177,7 +177,9 @@ func init() {
 	registerAll(allCandles())
 	registerAll(allCarpet())
 	registerAll(allCarrots())
+	registerAll(allCauldrons())
 	registerAll(allIronChains())
+	registerAll(allIronTrapdoors())
 	registerAll(allChests())
 	registerAll(allCocoaBeans())
 	registerAll(allComposters())
@@ -626,6 +628,10 @@ func init() {
 	// The vanilla creative inventory resolves its entries by registered item name, and the
 	// flower pot existed only as a block state.
 	world.RegisterItem(FlowerPot{})
+	// The vanilla creative inventory resolves its entries by registered item name, so a
+	// partial block the fork has but never registered as an item cannot appear there.
+	world.RegisterItem(Cauldron{})
+	world.RegisterItem(IronTrapdoor{})
 }
 
 func registerAll(blocks []world.Block) {

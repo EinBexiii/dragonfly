@@ -1,7 +1,6 @@
 package block
 
 import (
-	"math"
 	"math/rand/v2"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -116,7 +115,7 @@ func (t CopperTrapdoor) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (t CopperTrapdoor) EncodeBlock() (name string, properties map[string]any) {
-	return copperBlockName("copper_trapdoor", t.Oxidation, t.Waxed), map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
+	return copperBlockName("copper_trapdoor", t.Oxidation, t.Waxed), trapdoorProperties(t.Facing, t.Open, t.Top)
 }
 
 // allCopperTrapdoors returns a list of all copper trapdoor types

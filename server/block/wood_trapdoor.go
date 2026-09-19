@@ -7,7 +7,6 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/sound"
 	"github.com/go-gl/mathgl/mgl64"
-	"math"
 	"time"
 )
 
@@ -96,9 +95,9 @@ func (t WoodTrapdoor) EncodeItem() (name string, meta int16) {
 // EncodeBlock ...
 func (t WoodTrapdoor) EncodeBlock() (name string, properties map[string]any) {
 	if t.Wood == OakWood() {
-		return "minecraft:trapdoor", map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
+		return "minecraft:trapdoor", trapdoorProperties(t.Facing, t.Open, t.Top)
 	}
-	return "minecraft:" + t.Wood.String() + "_trapdoor", map[string]any{"direction": int32(math.Abs(float64(t.Facing) - 3)), "open_bit": t.Open, "upside_down_bit": t.Top}
+	return "minecraft:" + t.Wood.String() + "_trapdoor", trapdoorProperties(t.Facing, t.Open, t.Top)
 }
 
 // allTrapdoors returns a list of all trapdoor types
