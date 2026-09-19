@@ -215,12 +215,9 @@ func searchRange(box cube.BBox) (low, high cube.Pos) {
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of
 // what blocks need to have their BBox returned.
 func blockBBoxsAround(tx *world.Tx, box cube.BBox) []cube.BBox {
-	grown := box.Grow(0.25)
-	low, high := grown.Min(), grown.Max()
-	minX, minY, minZ := int(math.Floor(low[0])), int(math.Floor(low[1])), int(math.Floor(low[2]))
-	// The maximum bounds are exclusive: A block starting exactly at the box's
-	// maximum cannot collide with it.
-	maxX, maxY, maxZ := int(math.Ceil(high[0])), int(math.Ceil(high[1])), int(math.Ceil(high[2]))
+	low, high := searchRange(box)
+	minX, minY, minZ := low[0], low[1], low[2]
+	maxX, maxY, maxZ := high[0], high[1], high[2]
 
 	// A prediction of one BBox per block, plus an additional 2, in case. Allocate
 	// it lazily so that entities moving through air do not allocate an empty slice

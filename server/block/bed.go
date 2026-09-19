@@ -235,7 +235,7 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
 		"direction":      int32(horizontalDirection(b.Facing)),
-		"occupied_bit":   boolByte(b.Occupied || b.Sleeper != nil),
+		"occupied_bit":   boolByte(b.Occupied),
 		"head_piece_bit": boolByte(b.Head),
 	}
 }

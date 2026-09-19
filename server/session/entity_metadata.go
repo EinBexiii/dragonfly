@@ -112,9 +112,6 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 			m[protocol.EntityDataKeyControllingSeatIndex] = byte(0)
 		}
 	}
-	if collides {
-		m.SetFlag(protocol.EntityDataKeyFlags, protocol.EntityDataFlagHasCollision)
-	}
 	if o, ok := e.(orb); ok && metadataAllowedFor(e, entity.ExperienceOrbType) {
 		m[protocol.EntityDataKeyValue] = int32(o.Experience())
 	}

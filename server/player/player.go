@@ -1160,8 +1160,8 @@ func (p *Player) Sleep(pos cube.Pos) {
 	}
 
 	tx := p.Tx()
-	b, ok := tx.Block(pos).(block.Bed)
-	if !ok || b.Sleeper != nil {
+	b, ok := tx.Block(pos).(block.Sleepable)
+	if !ok || b.SleepingEntity() != nil {
 		// The player cannot sleep here.
 		return
 	}

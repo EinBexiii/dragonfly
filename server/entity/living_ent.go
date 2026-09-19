@@ -445,15 +445,13 @@ func (e *LivingEnt) Tick(tx *world.Tx, current int64) {
 		// wait at deathDuration.
 		if s.deathTicks == 0 {
 			e.PlayAction(DeathAction{})
+			tx.PlaySound(e.data.Pos, sound.MobDeath{Entity: e.H().Type().EncodeEntity()})
 			if h, ok := e.Behaviour().(LivingDeathHandler); ok {
 				h.HandleDeath(e, tx, s.deathSrc)
 			}
 		}
 		if s.deathTicks++; s.deathTicks >= deathDuration {
 			_ = e.Close()
-			// The death animation and removal go out in the same tick: clients play the animation on the
-			// removed entity themselves.
-			tx.PlaySound(e.data.Pos, sound.MobDeath{Entity: e.H().Type().EncodeEntity()})
 		}
 		return
 	}
