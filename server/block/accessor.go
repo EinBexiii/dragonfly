@@ -438,6 +438,17 @@ func (b Bone) WithAxis(axis cube.Axis) world.Block {
 }
 
 // PillarAxis returns the axis the block is oriented along.
+func (b ChiseledQuartz) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b ChiseledQuartz) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
 func (b CopperChain) PillarAxis() cube.Axis {
 	return b.Axis
 }
@@ -543,6 +554,17 @@ func (b PurpurPillar) PillarAxis() cube.Axis {
 
 // WithAxis returns a copy of the block with its axis set to axis.
 func (b PurpurPillar) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
+func (b Quartz) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b Quartz) WithAxis(axis cube.Axis) world.Block {
 	b.Axis = axis
 	return b
 }
@@ -676,5 +698,17 @@ func (b Wool) DyeColour() item.Colour {
 // WithColour returns a copy of the block with its colour set to colour.
 func (b Wool) WithColour(colour item.Colour) world.Block {
 	b.Colour = colour
+	return b
+}
+
+// FacingDirection returns the horizontal direction the block faces.
+func (b TripwireHook) FacingDirection() cube.Direction {
+	return b.Facing
+}
+
+// WithFacing returns a copy of the block with its facing set to facing. It does not update any
+// other blocks that the block may be part of, such as the second half of a bed or door.
+func (b TripwireHook) WithFacing(facing cube.Direction) world.Block {
+	b.Facing = facing
 	return b
 }
