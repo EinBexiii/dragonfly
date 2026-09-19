@@ -219,8 +219,6 @@ func init() {
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
 	registerAll(allPlanks())
-	registerAll(allPoplarPressurePlates())
-	registerAll(allPoplarButtons())
 	registerAll(allPotato())
 	registerAll(allPoweredRails())
 	registerAll(allPrismarine())

@@ -160,8 +160,6 @@ const (
 	hashPolishedCinnabar
 	hashPolishedSulfur
 	hashPolishedTuff
-	hashPoplarButton
-	hashPoplarPressurePlate
 	hashPortal
 	hashPotato
 	hashPoweredRail
@@ -866,14 +864,6 @@ func (PolishedSulfur) Hash() (uint64, uint64) {
 
 func (PolishedTuff) Hash() (uint64, uint64) {
 	return hashPolishedTuff, 0
-}
-
-func (b PoplarButton) Hash() (uint64, uint64) {
-	return hashPoplarButton, uint64(b.Facing) | uint64(boolByte(b.Pressed))<<3
-}
-
-func (b PoplarPressurePlate) Hash() (uint64, uint64) {
-	return hashPoplarPressurePlate, uint64(b.Power)
 }
 
 func (p Portal) Hash() (uint64, uint64) {
