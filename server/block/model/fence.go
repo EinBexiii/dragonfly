@@ -74,6 +74,8 @@ func (f Fence) Connects(pos cube.Pos, face cube.Face, src world.BlockSource) boo
 	if sideBlock.Model().FaceSolid(sidePos, face.Opposite(), src) {
 		return true
 	}
-	_, ok := sideBlock.Model().(FenceGate)
-	return ok
+	// A gate joins a fence only at the ends of its bar: Bedrock and Java both
+	// leave the faces the gate swings through unconnected, open or closed.
+	gate, ok := sideBlock.Model().(FenceGate)
+	return ok && gate.Facing.Face().Axis() != face.Axis()
 }
