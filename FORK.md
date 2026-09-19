@@ -48,11 +48,16 @@ go upstream on their own; they follow those branches.
 | Branch | Fixes |
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
-| `fix/break-time-check` | A survival break is credited one mining frame at a time: each client input frame admits one update to the active episode, admitted by a wall-time budget of twenty a second with two of slack shared by every block; a finish must name the block and have earned its whole break time, an early one resends the block and keeps the progress; the episode is bound to its block and to reach, a stop cancels, a game mode change ends it; the item-use break paths go through it outside creative; an unchanged position is not proof of ground. |
+| `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that only takes the frames real time has passed, that a new block may carry at most two of (naming another block earns nothing), and that an episode already underway may bank so delayed inputs are all credited; a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
 
+## Additions not yet sent upstream
+
+Independent of the fork's features, candidates for upstream pull requests.
+
+| Branch | Adds |
+|---|---|
 | `fix/transfer-inventory-resync` | The inventories and the held slot are sent again on the first input after a spawn, since a client arriving by transfer discards what reached it before its own spawn completed. |
-
-| `fix/entity-handles-within` | `Tx.EntityHandlesWithin` and `EntityHandle.Position`: the entities within a box as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. |
+| `fix/entity-handles-within` | `Tx.EntityHandlesWithin`, `Tx.EntityHandles` and `Tx.EntityPosition`: entities as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. A handle's position is read through its world's transaction, which reports false for a handle that world no longer holds. |
 
 ## Documentation
 

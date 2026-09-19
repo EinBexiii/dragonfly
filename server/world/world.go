@@ -72,6 +72,10 @@ type World struct {
 	// that the Entity was in. These are tracked so that a call to RemoveEntity
 	// can find the correct Entity.
 	entities map[*EntityHandle]ChunkPos
+	// entitiesVersion counts changes to entities; entityView is the handles
+	// grouped by identifier as of that version.
+	entitiesVersion uint64
+	entityView      *entityView
 
 	r *rand.Rand
 
@@ -859,6 +863,7 @@ func (w *World) addEntityAt(tx *Tx, handle *EntityHandle, pos mgl64.Vec3) Entity
 	handle.setAndUnlockWorldAt(w, pos)
 	chunkPos := chunkPosFromVec3(handle.data.Pos)
 	w.entities[handle] = chunkPos
+	w.invalidateEntityView()
 
 	c := tx.chunk(chunkPos)
 	c.Entities, c.modified = append(c.Entities, handle), true
@@ -894,6 +899,7 @@ func (w *World) removeEntity(e Entity, tx *Tx) *EntityHandle {
 		v.HideEntity(e)
 	}
 	delete(w.entities, handle)
+	w.invalidateEntityView()
 	handle.unsetAndLockWorld()
 	return handle
 }
@@ -1346,6 +1352,7 @@ func (w *World) close() {
 	w.closeAcceptingEntityTasks.Store(true)
 	w.scheduleMu.Unlock()
 	<-w.exec(func(tx *Tx) {
+		w.entityView = nil
 		// Let user code run anything that needs to be finished before closing.
 		w.Handler().HandleClose(tx)
 		tx.runDeferred()
@@ -1544,6 +1551,9 @@ func (w *World) addChunk(pos ChunkPos, c *chunk.Column) *Column {
 		w.entities[e] = pos
 		e.setAndUnlockWorld(w)
 		e.markWorldReady(w)
+	}
+	if len(column.Entities) > 0 {
+		w.invalidateEntityView()
 	}
 	w.calculateLight(pos)
 	w.deriveStates(pos)
