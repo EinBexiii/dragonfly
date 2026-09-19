@@ -31,6 +31,7 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 
 	entries := make([]protocol.SubChunkEntry, 0, len(offsets))
 	transaction := make(map[uint64]struct{})
+	heightMaps := make(map[*chunk.Chunk]chunk.SubChunkHeightMaps)
 	for _, offset := range offsets {
 		ind := int16(centre.Y()) + int16(offset[1]) - int16(r[0])>>4
 		if ind < 0 || ind > int16(r.Height()>>4) {
@@ -45,7 +46,12 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 			entries = append(entries, protocol.SubChunkEntry{Result: protocol.SubChunkResultChunkNotFound, Offset: offset})
 			continue
 		}
-		entries = append(entries, s.subChunkEntry(offset, ind, col, transaction))
+		maps, ok := heightMaps[col.Chunk]
+		if !ok {
+			maps = chunk.NewSubChunkHeightMaps(col.Chunk)
+			heightMaps[col.Chunk] = maps
+		}
+		entries = append(entries, s.subChunkEntry(offset, ind, col, maps, transaction))
 	}
 	if s.conn.ClientCacheEnabled() && len(transaction) > 0 {
 		s.blobMu.Lock()
@@ -61,33 +67,11 @@ func (s *Session) ViewSubChunks(centre world.SubChunkPos, offsets []protocol.Sub
 	})
 }
 
-func (s *Session) subChunkEntry(offset protocol.SubChunkOffset, ind int16, col *world.Column, transaction map[uint64]struct{}) protocol.SubChunkEntry {
-	chunkMap := col.HeightMap()
-	subMapType, subMap := byte(protocol.HeightMapDataHasData), protocol.HeightMap{}
-	higher, lower := true, true
-	for z := uint8(0); z < 16; z++ {
-		for x := uint8(0); x < 16; x++ {
-			y := chunkMap.At(x, z)
-			otherInd := col.SubIndex(y)
-			switch {
-			case otherInd > ind:
-				subMap[z][x], lower = 16, false
-			case otherInd < ind:
-				subMap[z][x], higher = -1, false
-			default:
-				subMap[z][x], lower, higher = int8(y-col.SubY(otherInd)), false, false
-			}
-		}
-	}
-	var subMapData protocol.Optional[protocol.HeightMap]
-	switch {
-	case higher:
-		subMapType = protocol.HeightMapDataTooHigh
-	case lower:
-		subMapType = protocol.HeightMapDataTooLow
-	default:
-		subMapData = protocol.Option(subMap)
-	}
+func (s *Session) subChunkEntry(
+	offset protocol.SubChunkOffset, ind int16, col *world.Column, heightMaps chunk.SubChunkHeightMaps,
+	transaction map[uint64]struct{},
+) protocol.SubChunkEntry {
+	subMapType, subMapData := heightMaps.At(ind)
 
 	sub := col.Sub()[ind]
 	if sub.Empty() {
