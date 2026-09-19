@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"math"
@@ -196,6 +197,19 @@ func (c *MovementComputer) CheckCollision(tx *world.Tx, e world.Entity, pos, vel
 		vel[2] = 0
 	}
 	return mgl64.Vec3{deltaX, deltaY, deltaZ}, vel
+}
+
+// searchRange is the block range whose boxes may collide with box: a
+// quarter block around it, and below it as far as a block's box may reach
+// upward, since a fence or a wall in the block below the lowest one still
+// stands into it. The maximum bounds are exclusive: a block starting
+// exactly at the box's maximum cannot collide with it.
+func searchRange(box cube.BBox) (low, high cube.Pos) {
+	grown := box.Grow(0.25).Extend(mgl64.Vec3{0, 1 - model.BarrierHeight, 0})
+	lo, hi := grown.Min(), grown.Max()
+	low = cube.Pos{int(math.Floor(lo[0])), int(math.Floor(lo[1])), int(math.Floor(lo[2]))}
+	high = cube.Pos{int(math.Ceil(hi[0])), int(math.Ceil(hi[1])), int(math.Ceil(hi[2]))}
+	return low, high
 }
 
 // blockBBoxsAround returns all blocks around the entity passed, using the BBox passed to make a prediction of

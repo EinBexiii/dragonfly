@@ -13,10 +13,12 @@ type Fence struct {
 	Wood bool
 }
 
-const (
-	fenceHeight = 1.5
-	fenceInset  = 0.375
-)
+// BarrierHeight is how tall a fence or a wall is to an entity: a block and a
+// half, so neither can be jumped over, whatever their drawn shape. Entity
+// movement searches that far below a box for blocks that reach into it.
+const BarrierHeight = 1.5
+
+const fenceInset = 0.375
 
 // BBox returns multiple physics.BBox depending on how many connections it has with the surrounding blocks.
 func (f Fence) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
@@ -27,7 +29,7 @@ func (f Fence) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 
 	// Check if we have any connections on the Z axis
 	if connectWest || connectEast {
-		sideBox := cube.Box(0, 0, 0, 1, fenceHeight, 1).Stretch(cube.Z, -fenceInset)
+		sideBox := cube.Box(0, 0, 0, 1, BarrierHeight, 1).Stretch(cube.Z, -fenceInset)
 		if connectWest {
 			boxes = append(boxes, sideBox.ExtendTowards(cube.FaceEast, -fenceInset))
 		}
@@ -38,7 +40,7 @@ func (f Fence) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 
 	// Check if we have any connections on the X axis
 	if connectNorth || connectSouth {
-		sideBox := cube.Box(0, 0, 0, 1, fenceHeight, 1).Stretch(cube.X, -fenceInset)
+		sideBox := cube.Box(0, 0, 0, 1, BarrierHeight, 1).Stretch(cube.X, -fenceInset)
 		if connectNorth {
 			boxes = append(boxes, sideBox.ExtendTowards(cube.FaceSouth, -fenceInset))
 		}
@@ -49,7 +51,7 @@ func (f Fence) BBox(pos cube.Pos, s world.BlockSource) []cube.BBox {
 
 	// If no connections, create a center post box
 	if len(boxes) == 0 {
-		boxes = append(boxes, cube.Box(fenceInset, 0, fenceInset, 1-fenceInset, fenceHeight, 1-fenceInset))
+		boxes = append(boxes, cube.Box(fenceInset, 0, fenceInset, 1-fenceInset, BarrierHeight, 1-fenceInset))
 	}
 
 	return boxes
