@@ -586,10 +586,6 @@ func init() {
 	for _, t := range PoplarLeavesTypes() {
 		world.RegisterItem(Leaves{Type: t, Persistent: true})
 	}
-	// Poplar leaves have no single type belonging to PoplarWood, so they are not covered by the loop above.
-	world.RegisterItem(Leaves{Type: OrangePoplarLeaves(), Persistent: true})
-	world.RegisterItem(Leaves{Type: RedPoplarLeaves(), Persistent: true})
-	world.RegisterItem(Leaves{Type: YellowPoplarLeaves(), Persistent: true})
 	for _, ore := range OreTypes() {
 		world.RegisterItem(CoalOre{Type: ore})
 		world.RegisterItem(CopperOre{Type: ore})
