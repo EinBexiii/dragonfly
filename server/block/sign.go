@@ -162,11 +162,11 @@ func (s Sign) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.T
 
 // NeighbourUpdateTick ...
 func (s Sign) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
-	if s.Attach.hanging {
-		if _, ok := tx.Block(pos.Side(s.Attach.facing.Opposite().Face())).(Air); ok {
-			breakBlock(s, pos, tx)
-		}
-	} else if _, ok := tx.Block(pos.Side(cube.FaceDown)).(Air); ok {
+	face, ok := s.Attach.supportFace()
+	if !ok {
+		return
+	}
+	if _, ok := tx.Block(pos.Side(face)).(Air); ok {
 		breakBlock(s, pos, tx)
 	}
 }
@@ -181,7 +181,7 @@ func (s Sign) EncodeBlock() (name string, properties map[string]any) {
 		woodType = "darkoak_"
 	}
 	if s.Attach.hanging {
-		return "minecraft:" + woodType + "wall_sign", map[string]any{"facing_direction": int32(s.Attach.facing + 2)}
+		return "minecraft:" + woodType + "wall_sign", map[string]any{"facing_direction": encodeFacingDirection(s.Attach.facing)}
 	}
 	return "minecraft:" + woodType + "standing_sign", map[string]any{"ground_sign_direction": int32(s.Attach.o)}
 }
@@ -242,7 +242,7 @@ func (s Sign) EncodeNBT() map[string]any {
 // allSigns ...
 func allSigns() (signs []world.Block) {
 	for _, w := range WoodTypes() {
-		for _, d := range cube.Directions() {
+		for _, d := range facingDirections() {
 			signs = append(signs, Sign{Wood: w, Attach: WallAttachment(d)})
 		}
 		for o := cube.Orientation(0); o <= 15; o++ {

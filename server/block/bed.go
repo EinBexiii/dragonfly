@@ -23,6 +23,8 @@ type Bed struct {
 	// Head is true if the bed is the head side.
 	Head bool
 	// Occupied is true while an entity is sleeping in the bed.
+	// Occupied is true if the bed is being slept in. Bedrock keeps this in the block state rather than in the
+	// block entity, so a saved world may hold an occupied bed whose Sleeper is gone.
 	Occupied bool
 	// Sleeper is the user that is using the bed. It is only set for the Head part of the bed.
 	Sleeper *world.EntityHandle
@@ -234,6 +236,7 @@ func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
 		"direction":      int32(horizontalDirection(b.Facing)),
 		"occupied_bit":   boolByte(b.Occupied),
+		"occupied_bit":   boolByte(b.Occupied || b.Sleeper != nil),
 		"head_piece_bit": boolByte(b.Head),
 	}
 }
@@ -287,6 +290,8 @@ func allBeds() (beds []world.Block) {
 			for _, occupied := range []bool{false, true} {
 				beds = append(beds, Bed{Facing: d, Head: head, Occupied: occupied})
 			}
+			beds = append(beds, Bed{Facing: d, Occupied: occupied})
+			beds = append(beds, Bed{Facing: d, Head: true, Occupied: occupied})
 		}
 	}
 	return

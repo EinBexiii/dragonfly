@@ -14,6 +14,10 @@ import (
 // TNT is an explosive block that can be primed to generate an explosion.
 type TNT struct {
 	solid
+
+	// Unstable is set by the game on TNT that is in the process of exploding: the block still exists for a
+	// tick while the primed entity is spawned. Dragonfly never sets it, but worlds may hold it.
+	Unstable bool
 }
 
 var _ world.RedstonePowerAction = TNT{}
@@ -74,7 +78,7 @@ func (t TNT) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (t TNT) EncodeBlock() (name string, properties map[string]interface{}) {
-	return "minecraft:tnt", map[string]interface{}{"explode_bit": false}
+	return "minecraft:tnt", map[string]interface{}{"explode_bit": t.Unstable}
 }
 
 // spawnTnt creates a new TNT entity at the given position with the given fuse duration.

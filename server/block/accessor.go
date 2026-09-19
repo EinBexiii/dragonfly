@@ -548,6 +548,17 @@ func (b Portal) WithAxis(axis cube.Axis) world.Block {
 }
 
 // PillarAxis returns the axis the block is oriented along.
+func (b Purpur) PillarAxis() cube.Axis {
+	return b.Axis
+}
+
+// WithAxis returns a copy of the block with its axis set to axis.
+func (b Purpur) WithAxis(axis cube.Axis) world.Block {
+	b.Axis = axis
+	return b
+}
+
+// PillarAxis returns the axis the block is oriented along.
 func (b PurpurPillar) PillarAxis() cube.Axis {
 	return b.Axis
 }

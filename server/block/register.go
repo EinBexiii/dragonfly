@@ -107,6 +107,7 @@ func init() {
 	world.RegisterBlock(PolishedBlackstoneBrick{})
 	world.RegisterBlock(Portal{Axis: cube.X})
 	world.RegisterBlock(Portal{Axis: cube.Z})
+	world.RegisterBlock(Portal{Axis: unknownAxis})
 	world.RegisterBlock(QuartzBricks{})
 	world.RegisterBlock(RawCopper{})
 	world.RegisterBlock(RawGold{})
@@ -137,6 +138,7 @@ func init() {
 	world.RegisterBlock(Sulfur{Chiseled: true})
 	world.RegisterBlock(SulfurBricks{})
 	world.RegisterBlock(PolishedSulfur{})
+	world.RegisterBlock(TNT{Unstable: true})
 	world.RegisterBlock(TNT{})
 	world.RegisterBlock(Terracotta{})
 	world.RegisterBlock(TintedGlass{})
@@ -550,6 +552,10 @@ func init() {
 	for _, t := range PoplarLeavesTypes() {
 		world.RegisterItem(Leaves{Type: t, Persistent: true})
 	}
+	// Poplar leaves have no single type belonging to PoplarWood, so they are not covered by the loop above.
+	world.RegisterItem(Leaves{Type: OrangePoplarLeaves(), Persistent: true})
+	world.RegisterItem(Leaves{Type: RedPoplarLeaves(), Persistent: true})
+	world.RegisterItem(Leaves{Type: YellowPoplarLeaves(), Persistent: true})
 	for _, ore := range OreTypes() {
 		world.RegisterItem(CoalOre{Type: ore})
 		world.RegisterItem(CopperOre{Type: ore})

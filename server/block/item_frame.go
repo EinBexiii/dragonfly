@@ -28,6 +28,12 @@ type ItemFrame struct {
 	DropChance float64
 	// Glowing makes the frame the glowing variant.
 	Glowing bool
+	// Map is true if the frame holds a map, which the game draws as a frame without a border.
+	// TODO: When maps are added, set this when the item in the frame is a map.
+	Map bool
+	// Photo is true if the frame holds a photo. Only Education Edition can put one in a frame, but a world
+	// from it may hold the state.
+	Photo bool
 }
 
 // Activate ...
@@ -109,8 +115,8 @@ func (i ItemFrame) EncodeBlock() (name string, properties map[string]any) {
 	}
 	return name, map[string]any{
 		"facing_direction":     int32(i.Facing.Opposite()),
-		"item_frame_map_bit":   uint8(0), // TODO: When maps are added, set this to true if the item is a map.
-		"item_frame_photo_bit": uint8(0), // Only implemented in Education Edition.
+		"item_frame_map_bit":   boolByte(i.Map),
+		"item_frame_photo_bit": boolByte(i.Photo),
 	}
 }
 
@@ -162,8 +168,13 @@ func (i ItemFrame) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 // allItemFrames ...
 func allItemFrames() (frames []world.Block) {
 	for _, f := range cube.Faces() {
-		frames = append(frames, ItemFrame{Facing: f, Glowing: true})
-		frames = append(frames, ItemFrame{Facing: f, Glowing: false})
+		for _, glowing := range []bool{true, false} {
+			for _, mapped := range []bool{false, true} {
+				for _, photo := range []bool{false, true} {
+					frames = append(frames, ItemFrame{Facing: f, Glowing: glowing, Map: mapped, Photo: photo})
+				}
+			}
+		}
 	}
 	return
 }

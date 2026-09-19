@@ -14,6 +14,9 @@ type Bone struct {
 
 	// Axis is the axis which the bone block faces.
 	Axis cube.Axis
+	// Deprecated is the unused deprecated property Bedrock stores, kept only so the state round-trips. See
+	// deprecatedValues.
+	Deprecated int
 }
 
 // Instrument ...
@@ -45,13 +48,15 @@ func (b Bone) EncodeItem() (name string, meta int16) {
 
 // EncodeBlock ...
 func (b Bone) EncodeBlock() (name string, properties map[string]any) {
-	return "minecraft:bone_block", map[string]any{"pillar_axis": b.Axis.String(), "deprecated": int32(0)}
+	return "minecraft:bone_block", map[string]any{"pillar_axis": b.Axis.String(), "deprecated": int32(b.Deprecated)}
 }
 
 // allBoneBlock ...
 func allBoneBlock() (boneBlocks []world.Block) {
 	for _, axis := range cube.Axes() {
-		boneBlocks = append(boneBlocks, Bone{Axis: axis})
+		for _, d := range deprecatedValues() {
+			boneBlocks = append(boneBlocks, Bone{Axis: axis, Deprecated: d})
+		}
 	}
 	return
 }
