@@ -18,6 +18,16 @@ type PlayerAuthInputHandler struct{}
 // Handle ...
 func (h PlayerAuthInputHandler) Handle(p packet.Packet, s *Session, tx *world.Tx, c Controllable) error {
 	pk := p.(*packet.PlayerAuthInput)
+	if s.resyncInv {
+		s.resyncInv = false
+		s.sendInventories()
+		// A client transferred with its inventory open closed it on its own
+		// and asked the previous server to confirm, which never answered; it
+		// waits for that close and asks to open nothing until it comes. A
+		// server-side close of the inventory window is that answer, and a
+		// client with nothing open ignores it.
+		s.writePacket(&packet.ContainerClose{WindowID: protocol.WindowIDInventory, ContainerType: byte(protocol.ContainerTypeInventory & 0xff), ServerSide: true})
+	}
 	// A riding player is carried by its mount, so its own reported position is
 	// not what moves it.
 	if !h.handleRiding(pk, s, tx, c) {

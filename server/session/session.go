@@ -66,7 +66,11 @@ type Session struct {
 	hiddenEntities map[uuid.UUID]struct{}
 
 	// heldSlot is the slot in the inventory that the controllable is holding.
-	heldSlot                     *uint32
+	heldSlot *uint32
+	// resyncInv asks the first input after a spawn to send the inventories
+	// again: a client arriving by transfer discards what reached it before
+	// its own spawn completed and keeps the previous server's hotbar.
+	resyncInv                    bool
 	inv, offHand, enderChest, ui *inventory.Inventory
 	armour                       *inventory.Armour
 
@@ -292,10 +296,8 @@ func (s *Session) Spawn(c Controllable, tx *world.Tx) {
 	}
 	s.ViewEntityState(c)
 
-	s.sendInv(s.inv, protocol.WindowIDInventory)
-	s.sendInv(s.ui, protocol.WindowIDUI)
-	s.sendInv(s.offHand, protocol.WindowIDOffHand)
-	s.sendInv(s.armour.Inventory(), protocol.WindowIDArmour)
+	s.sendInventories()
+	s.resyncInv = true
 
 	chat.Global.Subscribe(c)
 	if !s.conf.JoinMessage.Zero() {
