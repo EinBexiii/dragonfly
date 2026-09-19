@@ -126,6 +126,17 @@ func (s *Session) addSpecificMetadata(e any, m protocol.EntityMetadata) {
 	} else if o, ok := e.(owned); ok && o.Owner() != nil {
 		m[protocol.EntityDataKeyOwner] = int64(s.handleRuntimeID(o.Owner()))
 	}
+	if t, ok := e.(targeting); ok {
+		// Animations of mobs that hunt read the target through their
+		// has_target query, which the client answers from this field. Entity
+		// metadata is a delta, so a mob that lost its target must write a zero
+		// here: leaving the field out keeps the client's last value.
+		var id uint64
+		if h := t.TargetEntity(); h != nil {
+			id = s.handleRuntimeID(h)
+		}
+		m[protocol.EntityDataKeyTarget] = int64(id)
+	}
 	if sc, ok := e.(scaled); ok {
 		m[protocol.EntityDataKeyScale] = float32(sc.Scale())
 	}
@@ -292,6 +303,10 @@ type scaled interface {
 
 type owned interface {
 	Owner() *world.EntityHandle
+}
+
+type targeting interface {
+	TargetEntity() *world.EntityHandle
 }
 
 type named interface {
