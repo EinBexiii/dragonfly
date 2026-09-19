@@ -40,6 +40,16 @@ the list once upstream merges it.
 | `fix/spectator-game-mode` | Spectator is reproduced as measured on BDS 1.26.45: a game mode change is one player game type update addressed to the player's own unique ID (spectator is 6); a spectator's abilities carry the spectator layer ahead of the base layer, for the player and in the AddPlayer other clients get; the client hides a spectator by game type, so no invisibility is forced and no teleport is sent; a spectator cannot use items, and its request to stop flying is ignored. | #1285 |
 | `perf/chunk-height-maps` | Height-map columns are cached and invalidated per column, and a chunk's surface is prepared once per sub-chunk response. | #1449 |
 
+## Fixes on the fork's own features
+
+Built on `feature/death-animation` and `feature/integration`, so they cannot
+go upstream on their own; they follow those branches.
+
+| Branch | Fixes |
+|---|---|
+| `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
+| `fix/break-time-check` | A survival break is timed: progress is wall time credited at the break duration in force, one tick is credited at the start, the client's repeated start on the same block keeps it, and a finish needs the full break time less one tick or the block is resent; the item-use break paths go through it outside creative. |
+
 ## Documentation
 
 | Branch | Adds |

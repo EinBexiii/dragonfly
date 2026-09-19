@@ -103,6 +103,8 @@ type Controllable interface {
 	StartBreaking(pos cube.Pos, face cube.Face)
 	ContinueBreaking(face cube.Face)
 	FinishBreaking()
+	FinishBreakingAt(pos cube.Pos)
+	MineFrame(tick uint64)
 	AbortBreaking()
 
 	Exhaust(points float64)
