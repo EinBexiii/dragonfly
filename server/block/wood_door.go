@@ -48,7 +48,7 @@ func (d WoodDoor) FuelInfo() item.FuelInfo {
 
 // Model ...
 func (d WoodDoor) Model() world.BlockModel {
-	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right}
+	return model.Door{Facing: d.Facing, Open: d.Open, Right: d.Right, Top: d.Top, Kind: d.Wood.String()}
 }
 
 // NeighbourUpdateTick ...
@@ -66,38 +66,50 @@ func (d WoodDoor) NeighbourUpdateTick(pos, _ cube.Pos, tx *world.Tx) {
 
 // UseOnBlock handles the directional placing of doors
 func (d WoodDoor) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	return placeDoor(pos, face, tx, user, ctx, d, func(facing cube.Direction, right bool) (lower, upper world.Block) {
+		return WoodDoor{Wood: d.Wood, Facing: facing, Right: right}, WoodDoor{Wood: d.Wood, Facing: facing, Right: right, Top: true}
+	})
+}
+
+// placeDoor places the two halves of a door on the top face of a solid block, hinged by doorHingeRight.
+// halves builds them for the facing and hinge chosen.
+func placeDoor(pos cube.Pos, face cube.Face, tx *world.Tx, user item.User, ctx *item.UseContext, door world.Block, halves func(facing cube.Direction, right bool) (lower, upper world.Block)) bool {
 	if face != cube.FaceUp {
 		// Doors can only be placed when clicking the top face.
 		return false
 	}
 	below := pos
 	pos = pos.Side(cube.FaceUp)
-	if !replaceableWith(tx, pos, d) || !replaceableWith(tx, pos.Side(cube.FaceUp), d) {
+	if !replaceableWith(tx, pos, door) || !replaceableWith(tx, pos.Side(cube.FaceUp), door) {
 		return false
 	}
 	if !tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx) {
 		return false
 	}
-	d.Facing = user.Rotation().Direction()
-	left := tx.Block(pos.Side(d.Facing.RotateLeft().Face()))
-	right := tx.Block(pos.Side(d.Facing.RotateRight().Face()))
-	if _, ok := left.Model().(model.Door); ok {
-		d.Right = true
-	}
-	// The side the door hinge is on can be affected by the blocks to the left and right of the door. In particular,
-	// opaque blocks on the right side of the door with transparent blocks on the left side result in a right sided
-	// door hinge.
-	if diffuser, ok := right.(LightDiffuser); !ok || diffuser.LightDiffusionLevel() != 0 {
-		if diffuser, ok := left.(LightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
-			d.Right = true
-		}
-	}
+	facing := user.Rotation().Direction()
+	lower, upper := halves(facing, doorHingeRight(tx, pos, facing))
 
 	ctx.IgnoreBBox = true
-	place(tx, pos, d, user, ctx)
-	place(tx, pos.Side(cube.FaceUp), WoodDoor{Wood: d.Wood, Facing: d.Facing, Top: true, Right: d.Right}, user, ctx)
+	place(tx, pos, lower, user, ctx)
+	place(tx, pos.Side(cube.FaceUp), upper, user, ctx)
 	ctx.CountSub = 1
 	return placed(ctx)
+}
+
+// doorHingeRight reports whether a door placed at pos facing the given direction hangs on the right: next to
+// another door, or with an opaque block on the right and a transparent one on the left.
+func doorHingeRight(tx *world.Tx, pos cube.Pos, facing cube.Direction) bool {
+	left := tx.Block(pos.Side(facing.RotateLeft().Face()))
+	right := tx.Block(pos.Side(facing.RotateRight().Face()))
+	if _, ok := left.Model().(model.Door); ok {
+		return true
+	}
+	if diffuser, ok := right.(LightDiffuser); !ok || diffuser.LightDiffusionLevel() != 0 {
+		if diffuser, ok := left.(LightDiffuser); ok && diffuser.LightDiffusionLevel() == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // Activate ...

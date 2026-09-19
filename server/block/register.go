@@ -190,6 +190,7 @@ func init() {
 	registerAll(allDeepslate())
 	registerAll(allDetectorRails())
 	registerAll(allDoors())
+	registerAll(allIronDoors())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
 	registerAll(allEndRods())
@@ -632,6 +633,8 @@ func init() {
 	// partial block the fork has but never registered as an item cannot appear there.
 	world.RegisterItem(Cauldron{})
 	world.RegisterItem(IronTrapdoor{})
+	// iron door encodes an item but was never registered as one.
+	world.RegisterItem(IronDoor{})
 }
 
 func registerAll(blocks []world.Block) {
