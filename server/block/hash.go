@@ -8,6 +8,7 @@ const (
 	hashActivatorRail = iota
 	hashAir
 	hashAmethyst
+	hashAmethystCluster
 	hashAncientDebris
 	hashAndesite
 	hashAnvil
@@ -23,6 +24,8 @@ const (
 	hashBed
 	hashBedrock
 	hashBeetrootSeeds
+	hashBell
+	hashBigDripleaf
 	hashBlackstone
 	hashBlastFurnace
 	hashBlueIce
@@ -39,6 +42,7 @@ const (
 	hashCarrot
 	hashCauldron
 	hashChest
+	hashChiseledBookshelf
 	hashChiseledQuartz
 	hashChorusFlower
 	hashChorusPlant
@@ -55,6 +59,7 @@ const (
 	hashConcretePowder
 	hashCopper
 	hashCopperBars
+	hashCopperBulb
 	hashCopperChain
 	hashCopperDoor
 	hashCopperGolemStatue
@@ -65,6 +70,8 @@ const (
 	hashCopperTrapdoor
 	hashCoral
 	hashCoralBlock
+	hashCoralFan
+	hashCoralWallFan
 	hashCraftingTable
 	hashDaylightDetector
 	hashDeadBush
@@ -99,6 +106,7 @@ const (
 	hashFletchingTable
 	hashFlower
 	hashFlowerPot
+	hashFrogSpawn
 	hashFroglight
 	hashFrostedIce
 	hashFurnace
@@ -112,6 +120,8 @@ const (
 	hashGrass
 	hashGravel
 	hashGrindstone
+	hashHangingRoots
+	hashHangingSign
 	hashHayBale
 	hashHoneycomb
 	hashHopper
@@ -135,21 +145,25 @@ const (
 	hashLapis
 	hashLapisOre
 	hashLava
+	hashLeafLitter
 	hashLeaves
 	hashLectern
 	hashLever
 	hashLight
+	hashLightningRod
 	hashLilyPad
 	hashLitPumpkin
 	hashLog
 	hashLoom
 	hashMagma
+	hashMangroveRoots
 	hashMelon
 	hashMelonSeeds
 	hashMossCarpet
 	hashMud
 	hashMudBricks
 	hashMuddyMangroveRoots
+	hashMultiFace
 	hashMushroom
 	hashMushroomBlock
 	hashMycelium
@@ -166,11 +180,15 @@ const (
 	hashObsidian
 	hashPackedIce
 	hashPackedMud
+	hashPaleMossCarpet
 	hashPinkPetals
 	hashPiston
 	hashPistonArm
+	hashPitcherCrop
+	hashPitcherPlant
 	hashPlanks
 	hashPodzol
+	hashPointedDripstone
 	hashPolishedBlackstoneBrick
 	hashPolishedCinnabar
 	hashPolishedSulfur
@@ -201,11 +219,13 @@ const (
 	hashReinforcedDeepslate
 	hashResin
 	hashResinBricks
+	hashRespawnAnchor
 	hashSand
 	hashSandstone
 	hashSapling
 	hashSeaLantern
 	hashSeaPickle
+	hashShelf
 	hashShelfMushroom
 	hashShortGrass
 	hashShroomlight
@@ -214,9 +234,11 @@ const (
 	hashSkull
 	hashSlab
 	hashSlime
+	hashSmallDripleaf
 	hashSmithingTable
 	hashSmoker
 	hashSmoothBasalt
+	hashSnifferEgg
 	hashSnow
 	hashSnowLayer
 	hashSoulSand
@@ -244,6 +266,7 @@ const (
 	hashTripwireHook
 	hashTuff
 	hashTuffBricks
+	hashTurtleEgg
 	hashVines
 	hashWall
 	hashWater
@@ -290,6 +313,10 @@ func (Air) Hash() (uint64, uint64) {
 
 func (Amethyst) Hash() (uint64, uint64) {
 	return hashAmethyst, 0
+}
+
+func (a AmethystCluster) Hash() (uint64, uint64) {
+	return hashAmethystCluster, uint64(a.Size.Uint8()) | uint64(a.Facing)<<2
 }
 
 func (AncientDebris) Hash() (uint64, uint64) {
@@ -341,7 +368,6 @@ func (Beacon) Hash() (uint64, uint64) {
 }
 
 func (b Bed) Hash() (uint64, uint64) {
-	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<2 | uint64(boolByte(b.Occupied))<<3
 	return hashBed, uint64(b.Facing) | uint64(boolByte(b.Head))<<3 | uint64(boolByte(b.Occupied))<<4
 }
 
@@ -351,6 +377,14 @@ func (b Bedrock) Hash() (uint64, uint64) {
 
 func (b BeetrootSeeds) Hash() (uint64, uint64) {
 	return hashBeetrootSeeds, uint64(b.Growth)
+}
+
+func (b Bell) Hash() (uint64, uint64) {
+	return hashBell, uint64(b.Attachment.Uint8()) | uint64(b.Facing)<<2 | uint64(boolByte(b.Toggled))<<5
+}
+
+func (d BigDripleaf) Hash() (uint64, uint64) {
+	return hashBigDripleaf, uint64(boolByte(d.Head)) | uint64(d.Tilt.Uint8())<<1 | uint64(d.Facing)<<3
 }
 
 func (b Blackstone) Hash() (uint64, uint64) {
@@ -417,6 +451,10 @@ func (c Chest) Hash() (uint64, uint64) {
 	return hashChest, uint64(c.Facing)
 }
 
+func (c ChiseledBookshelf) Hash() (uint64, uint64) {
+	return hashChiseledBookshelf, uint64(c.BooksStored) | uint64(c.Facing)<<8
+}
+
 func (c ChiseledQuartz) Hash() (uint64, uint64) {
 	return hashChiseledQuartz, uint64(c.Axis)
 }
@@ -481,6 +519,10 @@ func (c CopperBars) Hash() (uint64, uint64) {
 	return hashCopperBars, uint64(c.Oxidation.Uint8()) | uint64(boolByte(c.Waxed))<<2 | uint64(c.Connections.Uint8())<<3
 }
 
+func (c CopperBulb) Hash() (uint64, uint64) {
+	return hashCopperBulb, uint64(c.Oxidation.Uint8()) | uint64(boolByte(c.Waxed))<<2 | uint64(boolByte(c.Lit))<<3 | uint64(boolByte(c.Powered))<<4
+}
+
 func (c CopperChain) Hash() (uint64, uint64) {
 	return hashCopperChain, uint64(c.Axis) | uint64(c.Oxidation.Uint8())<<2 | uint64(boolByte(c.Waxed))<<4
 }
@@ -519,6 +561,14 @@ func (c Coral) Hash() (uint64, uint64) {
 
 func (c CoralBlock) Hash() (uint64, uint64) {
 	return hashCoralBlock, uint64(c.Type.Uint8()) | uint64(boolByte(c.Dead))<<3
+}
+
+func (c CoralFan) Hash() (uint64, uint64) {
+	return hashCoralFan, uint64(c.Type.Uint8()) | uint64(boolByte(c.Dead))<<3 | uint64(c.Direction)<<4
+}
+
+func (c CoralWallFan) Hash() (uint64, uint64) {
+	return hashCoralWallFan, uint64(c.Type.Uint8()) | uint64(boolByte(c.Dead))<<3 | uint64(c.Direction)<<4
 }
 
 func (CraftingTable) Hash() (uint64, uint64) {
@@ -657,6 +707,10 @@ func (f FlowerPot) Hash() (uint64, uint64) {
 	return hashFlowerPot, uint64(boolByte(f.Update))
 }
 
+func (FrogSpawn) Hash() (uint64, uint64) {
+	return hashFrogSpawn, 0
+}
+
 func (f Froglight) Hash() (uint64, uint64) {
 	return hashFroglight, uint64(f.Type.Uint8()) | uint64(f.Axis)<<2
 }
@@ -709,6 +763,14 @@ func (g Grindstone) Hash() (uint64, uint64) {
 	return hashGrindstone, uint64(g.Attach.Uint8()) | uint64(g.Facing)<<2
 }
 
+func (HangingRoots) Hash() (uint64, uint64) {
+	return hashHangingRoots, 0
+}
+
+func (s HangingSign) Hash() (uint64, uint64) {
+	return hashHangingSign, uint64(s.Wood.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Attached))<<7 | uint64(boolByte(s.Hanging))<<8 | uint64(s.GroundDirection)<<9
+}
+
 func (h HayBale) Hash() (uint64, uint64) {
 	return hashHayBale, uint64(h.Axis) | uint64(h.Deprecated)<<2
 }
@@ -758,7 +820,7 @@ func (c IronChain) Hash() (uint64, uint64) {
 }
 
 func (d IronDoor) Hash() (uint64, uint64) {
-	return hashIronDoor, uint64(d.Facing) | uint64(boolByte(d.Open))<<2 | uint64(boolByte(d.Top))<<3 | uint64(boolByte(d.Right))<<4
+	return hashIronDoor, uint64(d.Facing) | uint64(boolByte(d.Open))<<3 | uint64(boolByte(d.Top))<<4 | uint64(boolByte(d.Right))<<5
 }
 
 func (i IronOre) Hash() (uint64, uint64) {
@@ -766,7 +828,7 @@ func (i IronOre) Hash() (uint64, uint64) {
 }
 
 func (t IronTrapdoor) Hash() (uint64, uint64) {
-	return hashIronTrapdoor, uint64(t.Facing) | uint64(boolByte(t.Open))<<2 | uint64(boolByte(t.Top))<<3
+	return hashIronTrapdoor, uint64(t.Facing) | uint64(boolByte(t.Open))<<3 | uint64(boolByte(t.Top))<<4
 }
 
 func (i ItemFrame) Hash() (uint64, uint64) {
@@ -801,6 +863,10 @@ func (l Lava) Hash() (uint64, uint64) {
 	return hashLava, uint64(boolByte(l.Still)) | uint64(l.Depth)<<1 | uint64(boolByte(l.Falling))<<9
 }
 
+func (l LeafLitter) Hash() (uint64, uint64) {
+	return hashLeafLitter, uint64(l.AdditionalCount) | uint64(l.Facing)<<8
+}
+
 func (l Leaves) Hash() (uint64, uint64) {
 	return hashLeaves, uint64(l.Type.Uint8()) | uint64(boolByte(l.Persistent))<<4 | uint64(boolByte(l.ShouldUpdate))<<5
 }
@@ -815,6 +881,10 @@ func (l Lever) Hash() (uint64, uint64) {
 
 func (l Light) Hash() (uint64, uint64) {
 	return hashLight, uint64(l.Level)
+}
+
+func (l LightningRod) Hash() (uint64, uint64) {
+	return hashLightningRod, uint64(l.Oxidation.Uint8()) | uint64(boolByte(l.Waxed))<<2 | uint64(l.Facing)<<3 | uint64(boolByte(l.Powered))<<6
 }
 
 func (LilyPad) Hash() (uint64, uint64) {
@@ -835,6 +905,10 @@ func (l Loom) Hash() (uint64, uint64) {
 
 func (Magma) Hash() (uint64, uint64) {
 	return hashMagma, 0
+}
+
+func (MangroveRoots) Hash() (uint64, uint64) {
+	return hashMangroveRoots, 0
 }
 
 func (Melon) Hash() (uint64, uint64) {
@@ -859,6 +933,10 @@ func (MudBricks) Hash() (uint64, uint64) {
 
 func (m MuddyMangroveRoots) Hash() (uint64, uint64) {
 	return hashMuddyMangroveRoots, uint64(m.Axis)
+}
+
+func (m MultiFace) Hash() (uint64, uint64) {
+	return hashMultiFace, uint64(m.Type.Uint8()) | uint64(m.Faces)<<2
 }
 
 func (m Mushroom) Hash() (uint64, uint64) {
@@ -925,6 +1003,10 @@ func (PackedMud) Hash() (uint64, uint64) {
 	return hashPackedMud, 0
 }
 
+func (p PaleMossCarpet) Hash() (uint64, uint64) {
+	return hashPaleMossCarpet, uint64(boolByte(p.UpperPart)) | uint64(p.North.Uint8())<<1 | uint64(p.East.Uint8())<<3 | uint64(p.South.Uint8())<<5 | uint64(p.West.Uint8())<<7
+}
+
 func (p PinkPetals) Hash() (uint64, uint64) {
 	return hashPinkPetals, uint64(p.AdditionalCount) | uint64(p.Facing)<<8
 }
@@ -937,12 +1019,24 @@ func (p PistonArm) Hash() (uint64, uint64) {
 	return hashPistonArm, uint64(boolByte(p.Sticky)) | uint64(p.Facing)<<1
 }
 
+func (p PitcherCrop) Hash() (uint64, uint64) {
+	return hashPitcherCrop, uint64(p.Growth) | uint64(boolByte(p.UpperPart))<<8
+}
+
+func (p PitcherPlant) Hash() (uint64, uint64) {
+	return hashPitcherPlant, uint64(boolByte(p.UpperPart))
+}
+
 func (p Planks) Hash() (uint64, uint64) {
 	return hashPlanks, uint64(p.Wood.Uint8())
 }
 
 func (Podzol) Hash() (uint64, uint64) {
 	return hashPodzol, 0
+}
+
+func (d PointedDripstone) Hash() (uint64, uint64) {
+	return hashPointedDripstone, uint64(d.Thickness.Uint8()) | uint64(boolByte(d.Hanging))<<3
 }
 
 func (b PolishedBlackstoneBrick) Hash() (uint64, uint64) {
@@ -1065,6 +1159,10 @@ func (r ResinBricks) Hash() (uint64, uint64) {
 	return hashResinBricks, uint64(boolByte(r.Chiseled))
 }
 
+func (r RespawnAnchor) Hash() (uint64, uint64) {
+	return hashRespawnAnchor, uint64(r.Charge)
+}
+
 func (s Sand) Hash() (uint64, uint64) {
 	return hashSand, uint64(boolByte(s.Red))
 }
@@ -1085,8 +1183,12 @@ func (s SeaPickle) Hash() (uint64, uint64) {
 	return hashSeaPickle, uint64(s.AdditionalCount) | uint64(boolByte(s.Dead))<<8
 }
 
+func (s Shelf) Hash() (uint64, uint64) {
+	return hashShelf, uint64(s.Wood.Uint8()) | uint64(s.Facing)<<4 | uint64(boolByte(s.Powered))<<7 | uint64(s.PoweredShelfType)<<8
+}
+
 func (s ShelfMushroom) Hash() (uint64, uint64) {
-	return hashShelfMushroom, uint64(s.Facing) | uint64(boolByte(s.Large))<<2
+	return hashShelfMushroom, uint64(s.Facing) | uint64(boolByte(s.Large))<<3
 }
 
 func (ShortGrass) Hash() (uint64, uint64) {
@@ -1117,6 +1219,10 @@ func (Slime) Hash() (uint64, uint64) {
 	return hashSlime, 0
 }
 
+func (d SmallDripleaf) Hash() (uint64, uint64) {
+	return hashSmallDripleaf, uint64(boolByte(d.UpperPart)) | uint64(d.Facing)<<1
+}
+
 func (SmithingTable) Hash() (uint64, uint64) {
 	return hashSmithingTable, 0
 }
@@ -1127,6 +1233,10 @@ func (s Smoker) Hash() (uint64, uint64) {
 
 func (SmoothBasalt) Hash() (uint64, uint64) {
 	return hashSmoothBasalt, 0
+}
+
+func (s SnifferEgg) Hash() (uint64, uint64) {
+	return hashSnifferEgg, uint64(s.Cracks.Uint8())
 }
 
 func (Snow) Hash() (uint64, uint64) {
@@ -1166,7 +1276,7 @@ func (t StainedTerracotta) Hash() (uint64, uint64) {
 }
 
 func (s Stairs) Hash() (uint64, uint64) {
-	return hashStairs, hashBlock(s.Block) | uint64(boolByte(s.UpsideDown))<<32 | uint64(s.Facing)<<33 | uint64(s.Corner.Uint8())<<35
+	return hashStairs, hashBlock(s.Block) | uint64(boolByte(s.UpsideDown))<<32 | uint64(s.Facing)<<33 | uint64(s.Corner.Uint8())<<36
 }
 
 func (s Stone) Hash() (uint64, uint64) {
@@ -1190,7 +1300,7 @@ func (s Stonecutter) Hash() (uint64, uint64) {
 }
 
 func (s StrawBed) Hash() (uint64, uint64) {
-	return hashStrawBed, uint64(s.Facing) | uint64(boolByte(s.Head))<<2 | uint64(boolByte(s.Occupied))<<3
+	return hashStrawBed, uint64(s.Facing) | uint64(boolByte(s.Head))<<3 | uint64(boolByte(s.Occupied))<<4
 }
 
 func (s String) Hash() (uint64, uint64) {
@@ -1226,7 +1336,7 @@ func (t Torch) Hash() (uint64, uint64) {
 }
 
 func (t TripwireHook) Hash() (uint64, uint64) {
-	return hashTripwireHook, uint64(t.Facing) | uint64(boolByte(t.Attached))<<2 | uint64(boolByte(t.Powered))<<3
+	return hashTripwireHook, uint64(t.Facing) | uint64(boolByte(t.Attached))<<3 | uint64(boolByte(t.Powered))<<4
 }
 
 func (t Tuff) Hash() (uint64, uint64) {
@@ -1235,6 +1345,10 @@ func (t Tuff) Hash() (uint64, uint64) {
 
 func (t TuffBricks) Hash() (uint64, uint64) {
 	return hashTuffBricks, uint64(boolByte(t.Chiseled))
+}
+
+func (t TurtleEgg) Hash() (uint64, uint64) {
+	return hashTurtleEgg, uint64(t.Count) | uint64(t.Cracks.Uint8())<<8
 }
 
 func (v Vines) Hash() (uint64, uint64) {

@@ -266,7 +266,7 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 5
 	case "OptionalColour":
 		return "uint64(" + s + ".Uint8())", 5
-	case "GrindstoneAttachment":
+	case "GrindstoneAttachment", "BellAttachment", "DripleafTilt", "AmethystClusterSize", "EggCracks", "MultiFaceType", "MossCarpetSide":
 		return "uint64(" + s + ".Uint8())", 2
 	case "Connections":
 		return "uint64(" + s + ".Uint8())", 4
@@ -275,7 +275,7 @@ func (b *hashBuilder) ftype(structName, s string, expr ast.Expr, directives map[
 		return "uint64(" + s + ".Uint8())", 4
 	case "SaplingType":
 		return "uint64(" + s + ".Uint8())", 4
-	case "CoralType", "SkullType", "StairsCorner":
+	case "CoralType", "SkullType", "StairsCorner", "DripstoneThickness":
 		return "uint64(" + s + ".Uint8())", 3
 	case "AnvilType", "SandstoneType", "PrismarineType", "StoneBricksType", "NetherBricksType", "FroglightType",
 		"WallConnectionType", "BlackstoneType", "DeepslateType", "TallGrassType", "CopperType", "OxidationType", "CauldronLiquid",

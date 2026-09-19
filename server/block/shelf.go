@@ -1,0 +1,81 @@
+package block
+
+import (
+	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/block/model"
+	"github.com/df-mc/dragonfly/server/item"
+	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl64"
+)
+
+// Shelf is a block that holds up to three item stacks on display.
+type Shelf struct {
+	transparent
+	blockEntityData
+
+	// Wood is the type of wood of the shelf. This field must have one of the values found in the material package.
+	Wood WoodType
+	// Facing is the direction the front of the shelf points in.
+	Facing cube.Direction
+	// Powered specifies if the shelf is currently receiving a redstone signal.
+	Powered bool
+	// PoweredShelfType is the raw powered_shelf_type state, ranging from 0 to 3. The BDS corpus does not name its
+	// values and the native collision getter does not read it, so it is carried through verbatim.
+	PoweredShelfType int
+}
+
+// Model ...
+func (s Shelf) Model() world.BlockModel {
+	return model.Shelf{Facing: s.Facing}
+}
+
+// UseOnBlock places the shelf with its front towards the player, as a lectern or a chest is placed.
+func (s Shelf) UseOnBlock(pos cube.Pos, face cube.Face, _ mgl64.Vec3, tx *world.Tx, user item.User, ctx *item.UseContext) bool {
+	pos, _, used := firstReplaceable(tx, pos, face, s)
+	if !used {
+		return false
+	}
+	s.Facing = user.Rotation().Direction().Opposite()
+
+	place(tx, pos, s, user, ctx)
+	return placed(ctx)
+}
+
+// EncodeBlock ...
+func (s Shelf) EncodeBlock() (string, map[string]any) {
+	return "minecraft:" + s.Wood.String() + "_shelf", map[string]any{
+		"minecraft:cardinal_direction": s.Facing.String(),
+		"powered_bit":                  s.Powered,
+		"powered_shelf_type":           int32(s.PoweredShelfType),
+	}
+}
+
+// EncodeItem ...
+func (s Shelf) EncodeItem() (name string, meta int16) {
+	return blockItemName(s), 0
+}
+
+// EncodeNBT ...
+func (s Shelf) EncodeNBT() map[string]any {
+	return s.storedNBT("Shelf")
+}
+
+// DecodeNBT ...
+func (s Shelf) DecodeNBT(data map[string]any) any {
+	s.blockEntityData = s.storeNBT(data)
+	return s
+}
+
+// allShelves returns all shelf states.
+func allShelves() (shelves []world.Block) {
+	for _, w := range WoodTypes() {
+		for _, d := range cube.Directions() {
+			for _, powered := range []bool{false, true} {
+				for shelfType := range 4 {
+					shelves = append(shelves, Shelf{Wood: w, Facing: d, Powered: powered, PoweredShelfType: shelfType})
+				}
+			}
+		}
+	}
+	return
+}

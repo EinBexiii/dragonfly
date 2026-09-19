@@ -16,7 +16,7 @@ func (Mud) Model() world.BlockModel {
 // SoilFor ...
 func (Mud) SoilFor(block world.Block) bool {
 	switch block.(type) {
-	case ShortGrass, Fern, DoubleTallGrass, Flower, DoubleFlower, NetherSprouts, PinkPetals, DeadBush, BambooSapling, Bamboo, Sapling, RedShrub:
+	case ShortGrass, Fern, DoubleTallGrass, Flower, DoubleFlower, NetherSprouts, PinkPetals, DeadBush, BambooSapling, Bamboo, Sapling, RedShrub, PitcherPlant, SmallDripleaf:
 		return true
 	}
 	return false

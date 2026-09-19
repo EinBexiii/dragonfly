@@ -235,7 +235,6 @@ func (b Bed) EncodeItem() (name string, meta int16) {
 func (b Bed) EncodeBlock() (name string, properties map[string]interface{}) {
 	return "minecraft:bed", map[string]interface{}{
 		"direction":      int32(horizontalDirection(b.Facing)),
-		"occupied_bit":   boolByte(b.Occupied),
 		"occupied_bit":   boolByte(b.Occupied || b.Sleeper != nil),
 		"head_piece_bit": boolByte(b.Head),
 	}
@@ -290,8 +289,6 @@ func allBeds() (beds []world.Block) {
 			for _, occupied := range []bool{false, true} {
 				beds = append(beds, Bed{Facing: d, Head: head, Occupied: occupied})
 			}
-			beds = append(beds, Bed{Facing: d, Occupied: occupied})
-			beds = append(beds, Bed{Facing: d, Head: true, Occupied: occupied})
 		}
 	}
 	return
@@ -339,6 +336,5 @@ func (b Bed) SafeSpawn(pos cube.Pos, tx *world.Tx) (cube.Pos, bool) {
 
 // supportedFromBelow ...
 func supportedFromBelow(pos cube.Pos, tx *world.Tx) bool {
-	below := pos.Side(cube.FaceDown)
-	return tx.Block(below).Model().FaceSolid(below, cube.FaceUp, tx)
+	return faceSolid(tx, pos.Side(cube.FaceDown), cube.FaceUp)
 }
