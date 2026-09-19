@@ -70,6 +70,11 @@ func (s *Session) closeCurrentContainer(tx *world.Tx, clientRequested bool) {
 	if !s.closeWindow(clientRequested) {
 		return
 	}
+	// An Entity's window belongs to no block, so it is let go of here rather
+	// than through a viewer the block would drop.
+	if s.openedEntity.Swap(nil) != nil {
+		return
+	}
 
 	pos := *s.openedPos.Load()
 	b := tx.Block(pos)
@@ -311,6 +316,10 @@ func (s *Session) invByID(id int32, tx *world.Tx) (*inventory.Inventory, bool) {
 		switch id {
 		case protocol.ContainerLevelEntity:
 			return s.openedWindow.Load(), true
+		case protocol.ContainerHorseEquip:
+			if s.openedEntity.Load() != nil {
+				return s.openedWindow.Load(), true
+			}
 		case protocol.ContainerShulkerBox:
 			if _, shulkerbox := tx.Block(*s.openedPos.Load()).(block.ShulkerBox); shulkerbox {
 				return s.openedWindow.Load(), true

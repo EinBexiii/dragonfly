@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/go-gl/mathgl/mgl32"
 	"io"
 	"log/slog"
 	"net"
@@ -57,8 +58,12 @@ type Session struct {
 	currentEntityRuntimeID uint64
 	// entityRuntimeIDs holds the runtime IDs of entities shown to the session.
 	entityRuntimeIDs map[*world.EntityHandle]uint64
-	entities         map[uint64]*world.EntityHandle
-	hiddenEntities   map[uuid.UUID]struct{}
+	// lastMove and lastVel hold what was last sent for each Entity, so that
+	// neither is sent again unchanged.
+	lastMove       map[uint64]movement
+	lastVel        map[uint64]mgl32.Vec3
+	entities       map[uint64]*world.EntityHandle
+	hiddenEntities map[uuid.UUID]struct{}
 
 	// heldSlot is the slot in the inventory that the controllable is holding.
 	heldSlot                     *uint32
@@ -90,6 +95,9 @@ type Session struct {
 	blobs                 map[uint64][]byte
 	openChunkTransactions []map[uint64]struct{}
 	invOpened             bool
+	// openedEntity holds the Entity whose inventory the session has open, nil
+	// when the window it has open is not an Entity's.
+	openedEntity atomic.Pointer[world.EntityHandle]
 
 	hudMu      sync.RWMutex
 	hudUpdates map[hud.Element]bool
@@ -191,6 +199,8 @@ func (conf Config) New(conn Conn) *Session {
 		handlers:               map[uint32]packetHandler{},
 		packets:                make(chan packet.Packet, 256),
 		entityRuntimeIDs:       map[*world.EntityHandle]uint64{},
+		lastMove:               map[uint64]movement{},
+		lastVel:                map[uint64]mgl32.Vec3{},
 		entities:               map[uint64]*world.EntityHandle{},
 		hiddenEntities:         map[uuid.UUID]struct{}{},
 		blobs:                  map[uint64][]byte{},
@@ -340,6 +350,8 @@ func (s *Session) close(tx *world.Tx, c Controllable) {
 	sessions.Remove(s, c)
 	s.entityMutex.Lock()
 	clear(s.entityRuntimeIDs)
+	clear(s.lastMove)
+	clear(s.lastVel)
 	clear(s.entities)
 	s.entityMutex.Unlock()
 }

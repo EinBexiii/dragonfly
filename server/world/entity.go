@@ -423,6 +423,9 @@ type EntityData struct {
 	AlwaysShowNameTag bool
 	FireDuration      time.Duration
 	Age               time.Duration
+	// Ride holds the Entity's part in a ride, read through the EntityHandle
+	// methods in ride.go.
+	Ride ride
 
 	Data any
 }

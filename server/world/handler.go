@@ -67,6 +67,13 @@ type Handler interface {
 	// which is handled by its own Handler instead. ctx.Cancel() may be called to cancel the damage
 	// entirely, and the damage may be changed through the pointer passed.
 	HandleEntityHurt(ctx *Context, e Entity, damage *float64, src DamageSource)
+	// HandleEntityMount handles an Entity taking a seat on another.
+	// ctx.Cancel() may be called to keep it off, and the seat it takes may be
+	// changed through the pointer passed.
+	HandleEntityMount(ctx *Context, rider, mount Entity, seat *int)
+	// HandleEntityDismount handles an Entity leaving the seat it rides in.
+	// ctx.Cancel() may be called to keep it seated.
+	HandleEntityDismount(ctx *Context, rider, mount Entity)
 	// HandleExplosion handles an explosion in the world. ctx.Cancel() may be called
 	// to cancel the explosion.
 	// The affected entities, affected blocks, item drop chance, and whether the
@@ -103,6 +110,8 @@ func (NopHandler) HandlePortalActivate(*Context, Dimension, []cube.Pos)         
 func (NopHandler) HandleEntitySpawn(*Tx, Entity)                                {}
 func (NopHandler) HandleEntityDespawn(*Tx, Entity)                              {}
 func (NopHandler) HandleEntityHurt(*Context, Entity, *float64, DamageSource)    {}
+func (NopHandler) HandleEntityMount(*Context, Entity, Entity, *int)             {}
+func (NopHandler) HandleEntityDismount(*Context, Entity, Entity)                {}
 func (NopHandler) HandleExplosion(*Context, ExplosionSource, *[]Entity, *[]cube.Pos, *float64, *bool) {
 }
 func (NopHandler) HandleRedstoneUpdate(*Context, RedstoneUpdate) {}

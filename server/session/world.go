@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/color"
+	"math"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -160,6 +161,8 @@ func (s *Session) ViewEntity(e world.Entity) {
 		Yaw:             float32(yaw),
 		HeadYaw:         float32(yaw),
 		BodyYaw:         float32(yaw),
+		EntityLinks:     s.entityLinks(e),
+		Attributes:      entityAttributes(e),
 	})
 }
 
@@ -190,6 +193,8 @@ func (s *Session) HideEntity(e world.Entity) {
 		delete(s.entityRuntimeIDs, e.H())
 		delete(s.entities, id)
 	}
+	delete(s.lastMove, id)
+	delete(s.lastVel, id)
 	s.entityMutex.Unlock()
 	if !ok {
 		// The entity was already removed some other way. We don't need to send a packet.
@@ -216,34 +221,108 @@ func (s *Session) ViewEntityDisplacement(e world.Entity, pos mgl64.Vec3, rot cub
 	s.viewEntityAbsoluteMovement(id, e, pos, rot, onGround, true)
 }
 
+// viewEntityAbsoluteMovement shows a viewer where an Entity went, carrying only
+// the parts of it the client does not already hold. A client running its own
+// prediction of an Entity is corrected by every axis it is sent. A teleport is
+// the exception and goes whole.
 func (s *Session) viewEntityAbsoluteMovement(id uint64, e world.Entity, pos mgl64.Vec3, rot cube.Rotation, onGround, authoritative bool) {
-	flags := byte(0)
-	if onGround {
-		flags |= packet.MoveFlagOnGround
+	now := movement{
+		pos: vec64To32(pos.Add(entityOffset(e))),
+		rot: vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), rot.Yaw()}),
 	}
+	s.entityMutex.Lock()
+	last, sent := s.lastMove[id]
+	s.lastMove[id] = now
+	s.entityMutex.Unlock()
+
 	if authoritative {
-		flags |= packet.MoveFlagTeleport
+		flags := byte(packet.MoveFlagTeleport)
+		if onGround {
+			flags |= packet.MoveFlagOnGround
+		}
+		s.writePacket(&packet.MoveActorAbsolute{
+			EntityRuntimeID: id,
+			Position:        now.pos,
+			Rotation:        now.rot,
+			Flags:           flags,
+		})
+		return
 	}
-	s.writePacket(&packet.MoveActorAbsolute{
+	if !sent {
+		last = movement{pos: mgl32.Vec3{inf, inf, inf}, rot: mgl32.Vec3{inf, inf, inf}}
+	}
+	x, y, z, pitch, yaw := now.changed(last)
+	s.writePacket(&packet.MoveActorDelta{
 		EntityRuntimeID: id,
-		Position:        vec64To32(pos.Add(entityOffset(e))),
-		Rotation:        vec64To32(mgl64.Vec3{rot.Pitch(), rot.Yaw(), rot.Yaw()}),
-		Flags:           flags,
+		PositionX:       x,
+		PositionY:       y,
+		PositionZ:       z,
+		RotationX:       pitch,
+		RotationY:       yaw,
+		RotationYHead:   yaw,
+		OnGround:        onGround,
 	})
 }
 
-// ViewEntityVelocity ...
+// movement is the position and rotation a Session last sent for an Entity.
+type movement struct {
+	pos, rot mgl32.Vec3
+}
+
+// moveEpsilon is the distance below which a movement counts as none at all.
+const moveEpsilon = 1e-4
+
+// inf is the position held for an Entity never moved, so that its first
+// movement carries every part of it.
+var inf = float32(math.Inf(1))
+
+// changed returns the parts of m that b does not already hold.
+func (m movement) changed(b movement) (x, y, z, pitch, yaw protocol.Optional[float32]) {
+	set := func(a, b float32) protocol.Optional[float32] {
+		if math.Abs(float64(a-b)) < moveEpsilon {
+			return protocol.Optional[float32]{}
+		}
+		return protocol.Option(a)
+	}
+	return set(m.pos[0], b.pos[0]), set(m.pos[1], b.pos[1]), set(m.pos[2], b.pos[2]),
+		set(m.rot[0], b.rot[0]), set(m.rot[1], b.rot[1])
+}
+
+// ViewEntityVelocity tells a viewer how fast an Entity is going. A velocity the
+// client already holds is not repeated: it applies one to its own prediction of
+// the Entity, so the same value again is another push rather than a restatement.
 func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
 	}
-	s.writePacket(&packet.SetActorMotion{
-		EntityRuntimeID: s.entityRuntimeID(e),
-		Velocity:        vec64To32(velocity),
-	})
+	id, vel := s.entityRuntimeID(e), vec64To32(velocity)
+	s.entityMutex.Lock()
+	last, sent := s.lastVel[id]
+	s.lastVel[id] = vel
+	s.entityMutex.Unlock()
+	if sent && last.ApproxEqualThreshold(vel, moveEpsilon) {
+		return
+	}
+	s.writePacket(&packet.SetActorMotion{EntityRuntimeID: id, Velocity: vel})
 }
 
 // entityOffset returns the offset that entities have client-side.
+// entityAttributes returns the attributes an Entity's Behaviour carries. A
+// client driving a mount reads how fast and how high it may take it from them.
+func entityAttributes(e world.Entity) []protocol.AttributeValue {
+	ent, ok := e.(interface{ Behaviour() entity.Behaviour })
+	if !ok {
+		return nil
+	}
+	a, ok := ent.Behaviour().(interface {
+		EncodeEntityAttributes() []protocol.AttributeValue
+	})
+	if !ok {
+		return nil
+	}
+	return a.EncodeEntityAttributes()
+}
+
 func entityOffset(e world.Entity) mgl64.Vec3 {
 	if offset, ok := e.H().Type().(OffsetEntity); ok {
 		return mgl64.Vec3{0, offset.NetworkOffset()}
@@ -398,6 +477,11 @@ func (s *Session) ViewParticle(pos mgl64.Vec3, p world.Particle) {
 			Position:  vec64To32(pos),
 			EventData: int32((((((abs(pa.Diff.X()) << 16) | (abs(pa.Diff.Y()) << 8)) | abs(pa.Diff.Z())) | xSign) | ySign) | zSign),
 		})
+	case particle.MobHappy:
+		s.writePacket(&packet.LevelEvent{
+			EventType: packet.LevelEventParticleLegacyEvent | packet.ParticleTypeVillagerHappy,
+			Position:  vec64To32(pos),
+		})
 	case particle.Note:
 		s.writePacket(&packet.BlockEvent{
 			EventType: pa.Instrument.Int32(),
@@ -546,6 +630,16 @@ func (s *Session) playSound(pos mgl64.Vec3, t world.Sound, disableRelative bool)
 		DisableRelativeVolume: disableRelative,
 	}
 	switch so := t.(type) {
+	case sound.MobHurt:
+		pk.SoundType, pk.EntityType = packet.SoundEventHurt, so.Entity
+	case sound.MobDeath:
+		pk.SoundType, pk.EntityType = packet.SoundEventDeath, so.Entity
+	case sound.MobAmbient:
+		pk.SoundType, pk.EntityType = packet.SoundEventAmbient, so.Entity
+	case sound.MobEat:
+		pk.SoundType, pk.EntityType = packet.SoundEventEat, so.Entity
+	case sound.MobPlop:
+		pk.SoundType, pk.EntityType = packet.SoundEventPlop, so.Entity
 	case sound.EquipItem:
 		switch i := so.Item.(type) {
 		case item.Helmet:
@@ -1065,6 +1159,19 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 			EntityRuntimeID: s.entityRuntimeID(e),
 			Data:            float32(act.Count),
 		})
+	case entity.FeedAction:
+		// The event carries the eaten item as the client reads it: the item's
+		// network ID in the high bits, its metadata in the low ones.
+		var data int32
+		if !act.Item.Empty() {
+			it := instanceFromItem(s.br, act.Item)
+			data = it.Stack.ItemType.NetworkID<<16 | int32(it.Stack.MetadataValue)
+		}
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventFeed,
+			EventData:       data,
+		})
 	case entity.DeathAction:
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
@@ -1085,6 +1192,21 @@ func (s *Session) ViewEntityAction(e world.Entity, a world.EntityAction) {
 		s.writePacket(&packet.ActorEvent{
 			EntityRuntimeID: s.entityRuntimeID(e),
 			EventType:       packet.ActorEventFireworksExplode,
+		})
+	case entity.TamingFailedAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingFailed,
+		})
+	case entity.TamingSucceededAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventTamingSucceeded,
+		})
+	case entity.LoveHeartsAction:
+		s.writePacket(&packet.ActorEvent{
+			EntityRuntimeID: s.entityRuntimeID(e),
+			EventType:       packet.ActorEventLoveHearts,
 		})
 	case entity.EatAction:
 		if user, ok := e.(item.User); ok {
@@ -1479,4 +1601,86 @@ func abs(a int) int {
 		return -a
 	}
 	return a
+}
+
+// OpenEntityInventory opens the inventory that an entity carries, such as the
+// saddle and armour slots of a horse. Unlike a block container, the window is
+// bound to the entity: the client keeps it open while the entity is in view.
+// OpenEntityInventory reports whether it opened a window: an entity that
+// carries no inventory, or one the session cannot see, has none to open.
+func (s *Session) OpenEntityInventory(e world.Entity, tx *world.Tx) bool {
+	carrier, ok := e.(entity.InventoryCarrier)
+	if !ok || s.entityHidden(e) {
+		return false
+	}
+	id := s.entityRuntimeID(e)
+	if id == 0 {
+		return false
+	}
+	inv, slots := carrier.CarriedInventory()
+	if inv == nil {
+		// The carrier refuses to be opened right now, the way an untamed horse
+		// has no window to show.
+		return false
+	}
+
+	if s.containerOpened.Load() {
+		if s.openedEntity.Load() == e.H() {
+			// Already open on this entity; see OpenTrade.
+			return true
+		}
+		s.closeCurrentContainer(tx, false)
+	}
+	nextID := s.nextWindowID()
+	s.containerOpened.Store(true)
+	s.invOpened = false
+	s.openedWindow.Store(inv)
+	s.openedEntity.Store(e.H())
+	pos := cube.PosFromVec3(e.Position())
+	s.openedPos.Store(&pos)
+	s.openedContainerID.Store(protocol.ContainerTypeHorse)
+
+	// Like a trade window, this one opens on its contents alone.
+	data, err := nbt.MarshalEncoding(map[string]any{"slots": equipSlots(slots)}, nbt.NetworkLittleEndian)
+	if err != nil {
+		s.conf.Log.Debug("open entity inventory: encode slots: " + err.Error())
+		return false
+	}
+	s.writePacket(&packet.UpdateEquip{
+		WindowID:                nextID,
+		WindowType:              protocol.ContainerTypeHorse,
+		Size:                    int32(inv.Size()),
+		EntityUniqueID:          int64(id),
+		SerialisedInventoryData: data,
+	})
+	s.sendInv(inv, uint32(nextID))
+	return true
+}
+
+// equipSlots describes the equipment slots of an entity window the way the
+// client expects them: an outline item and the list of items the slot takes.
+func equipSlots(slots []entity.InventorySlot) []map[string]any {
+	l := make([]map[string]any, 0, len(slots))
+	for _, slot := range slots {
+		accepted := make([]map[string]any, 0, len(slot.Accepts))
+		for _, it := range slot.Accepts {
+			accepted = append(accepted, map[string]any{"slotItem": slotItem(it)})
+		}
+		l = append(l, map[string]any{
+			"acceptedItems": accepted,
+			"item":          slotItem(slot.Icon),
+			"slotNumber":    int32(slot.Slot),
+		})
+	}
+	return l
+}
+
+// slotItem names an item in an entity window's slot description. The client
+// matches on the name alone, so the aux value is left wild.
+func slotItem(it world.Item) map[string]any {
+	var name string
+	if it != nil {
+		name, _ = it.EncodeItem()
+	}
+	return map[string]any{"Aux": int16(math.MaxInt16), "Name": name}
 }
