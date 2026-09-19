@@ -253,7 +253,6 @@ func init() {
 	registerAll(allPoplarPressurePlates())
 	registerAll(allPoplarButtons())
 	registerAll(allPitcherPlants())
-	registerAll(allPlanks())
 	registerAll(allPointedDripstone())
 	registerAll(allPotato())
 	registerAll(allPoweredRails())
