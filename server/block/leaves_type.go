@@ -61,20 +61,16 @@ func FloweringAzaleaLeaves() LeavesType {
 }
 
 // OrangePoplarLeaves returns orange poplar leaves material.
-// OrangePoplarLeaves returns orange poplar leaves. Poplar is the one tree whose leaves come in more than one
-// colour, so each colour is a leaves type of its own rather than a variant of a single poplar type.
 func OrangePoplarLeaves() LeavesType {
 	return LeavesType{11}
 }
 
 // RedPoplarLeaves returns red poplar leaves material.
-// RedPoplarLeaves returns red poplar leaves.
 func RedPoplarLeaves() LeavesType {
 	return LeavesType{12}
 }
 
 // YellowPoplarLeaves returns yellow poplar leaves material.
-// YellowPoplarLeaves returns yellow poplar leaves.
 func YellowPoplarLeaves() LeavesType {
 	return LeavesType{13}
 }

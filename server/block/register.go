@@ -250,8 +250,6 @@ func init() {
 	registerAll(allPinkPetals())
 	registerAll(allPistons())
 	registerAll(allPlanks())
-	registerAll(allPoplarPressurePlates())
-	registerAll(allPoplarButtons())
 	registerAll(allPitcherPlants())
 	registerAll(allPointedDripstone())
 	registerAll(allPotato())
