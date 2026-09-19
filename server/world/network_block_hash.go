@@ -91,3 +91,10 @@ func networkBlockHash(name string, properties map[string]any, scratch []byte) (u
 
 	return fnv1a.HashBytes32(data), data
 }
+
+// NetworkBlockHash returns the network block hash of the block state with name and properties, as
+// the client computes it and as the server sends it when UseBlockNetworkIDHashes is set.
+func NetworkBlockHash(name string, properties map[string]any) uint32 {
+	h, _ := networkBlockHash(name, properties, nil)
+	return h
+}
