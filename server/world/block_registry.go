@@ -64,6 +64,8 @@ type BlockRegistry interface {
 	BlockHash(b Block) uint64
 	// RuntimeIDToHash resolves a runtime ID to its network block hash.
 	RuntimeIDToHash(runtimeID uint32) (hash uint32, ok bool)
+	// HashToRuntimeID resolves a network block hash to a runtime ID.
+	HashToRuntimeID(hash uint32) (rid uint32, ok bool)
 }
 
 const (
