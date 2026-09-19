@@ -421,13 +421,19 @@ func (s *Session) ViewEntityArmour(e world.Entity) {
 		return
 	}
 
-	// Show the entity's armour
+	// Show the entity's armour. Armour worn on the body, such as horse armour,
+	// renders from the Body field alone; the client ignores it as a chestplate.
+	var body item.Stack
+	if b, ok := e.(interface{ BodyArmour() item.Stack }); ok {
+		body = b.BodyArmour()
+	}
 	s.writePacket(&packet.MobArmourEquipment{
 		EntityRuntimeID: runtimeID,
 		Helmet:          instanceFromItem(s.br, inv.Helmet()),
 		Chestplate:      instanceFromItem(s.br, inv.Chestplate()),
 		Leggings:        instanceFromItem(s.br, inv.Leggings()),
 		Boots:           instanceFromItem(s.br, inv.Boots()),
+		Body:            instanceFromItem(s.br, body),
 	})
 }
 

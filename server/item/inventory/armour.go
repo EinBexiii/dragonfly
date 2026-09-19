@@ -25,6 +25,14 @@ func NewArmour(f func(slot int, before, after item.Stack)) *Armour {
 	return &Armour{inv: inv}
 }
 
+// NewEntityArmour returns an Armour inventory for armour worn by an entity
+// other than a player, such as a horse. What may go in it is decided by the
+// entity wearing it rather than by the slot, because entity armour is not worn
+// the way a player's is.
+func NewEntityArmour(f func(slot int, before, after item.Stack)) *Armour {
+	return &Armour{inv: New(4, f)}
+}
+
 // canAddArmour checks if the item passed can be worn as armour in the slot passed.
 func canAddArmour(s item.Stack, slot int) bool {
 	if s.Empty() {
