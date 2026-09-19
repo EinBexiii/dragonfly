@@ -157,6 +157,7 @@ func init() {
 		world.RegisterBlock(RedstoneOre{Type: ore, Lit: true})
 	}
 
+	registerAll(allActivatorRails())
 	registerAll(allAnvils())
 	registerAll(allBambooBlocks())
 	registerAll(allBamboos())
@@ -185,6 +186,7 @@ func init() {
 	registerAll(allCoral())
 	registerAll(allCoralBlocks())
 	registerAll(allDeepslate())
+	registerAll(allDetectorRails())
 	registerAll(allDoors())
 	registerAll(allDoubleFlowers())
 	registerAll(allDoubleTallGrass())
@@ -219,12 +221,16 @@ func init() {
 	registerAll(allNetherWart())
 	registerAll(allPinkPetals())
 	registerAll(allPlanks())
+	registerAll(allPoplarPressurePlates())
+	registerAll(allPoplarButtons())
 	registerAll(allPotato())
+	registerAll(allPoweredRails())
 	registerAll(allPrismarine())
 	registerAll(allPumpkinStems())
 	registerAll(allPumpkins())
 	registerAll(allPurpurs())
 	registerAll(allQuartz())
+	registerAll(allRails())
 	registerAll(allRedstoneTorches())
 	registerAll(allRedstoneWires())
 	registerAll(allSandstones())
@@ -234,6 +240,7 @@ func init() {
 	registerAll(allSkulls())
 	registerAll(allSlabs())
 	registerAll(allSmokers())
+	registerAll(allSnowLayers())
 	registerAll(allStainedGlass())
 	registerAll(allStainedGlassPane())
 	registerAll(allStainedTerracotta())
@@ -241,6 +248,8 @@ func init() {
 	registerAll(allStoneBricks())
 	world.RegisterBlock(RedShrub{})
 	registerAll(allShelfMushrooms())
+	registerAll(allStoneButtons())
+	registerAll(allStonePressurePlates())
 	registerAll(allStonecutters())
 	registerAll(allStrawBeds())
 	registerAll(allString())
@@ -250,8 +259,11 @@ func init() {
 	registerAll(allVines())
 	registerAll(allWalls())
 	registerAll(allWater())
+	registerAll(allWeightedPressurePlates())
 	registerAll(allWheat())
 	registerAll(allWood())
+	registerAll(allWoodButtons())
+	registerAll(allWoodPressurePlates())
 	registerAll(allWool())
 	registerAll(allDecoratedPots())
 	registerAll(allCopper())
@@ -590,6 +602,25 @@ func init() {
 
 	for _, c := range item.OptionalColours() {
 		world.RegisterItem(ShulkerBox{Colour: c})
+	}
+
+	// The vanilla creative inventory resolves its entries by registered item name, so every
+	// low block the fork has needs an item of its own.
+	world.RegisterItem(ActivatorRail{})
+	world.RegisterItem(DetectorRail{})
+	world.RegisterItem(PoweredRail{})
+	world.RegisterItem(Rail{})
+	world.RegisterItem(SnowLayer{Layers: 1})
+	for _, blackstone := range []bool{false, true} {
+		world.RegisterItem(StoneButton{Blackstone: blackstone})
+		world.RegisterItem(StonePressurePlate{Blackstone: blackstone})
+	}
+	for _, heavy := range []bool{false, true} {
+		world.RegisterItem(WeightedPressurePlate{Heavy: heavy})
+	}
+	for _, w := range WoodTypes() {
+		world.RegisterItem(WoodButton{Wood: w})
+		world.RegisterItem(WoodPressurePlate{Wood: w})
 	}
 }
 
