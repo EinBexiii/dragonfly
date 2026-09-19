@@ -196,6 +196,7 @@ func init() {
 	registerAll(allFence())
 	registerAll(allFenceGates())
 	registerAll(allFire())
+	registerAll(allFlowerPots())
 	registerAll(allFlowers())
 	registerAll(allFroglight())
 	registerAll(allFurnaces())
@@ -622,6 +623,9 @@ func init() {
 		world.RegisterItem(WoodButton{Wood: w})
 		world.RegisterItem(WoodPressurePlate{Wood: w})
 	}
+	// The vanilla creative inventory resolves its entries by registered item name, and the
+	// flower pot existed only as a block state.
+	world.RegisterItem(FlowerPot{})
 }
 
 func registerAll(blocks []world.Block) {
