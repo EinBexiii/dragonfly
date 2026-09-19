@@ -5,6 +5,10 @@ import (
 	"image/color"
 )
 
+// AnimationNone is an animation entry that does not animate any part of the skin.
+// Keep the existing animation constants unchanged for callers using their values.
+const AnimationNone AnimationType = -1
+
 const (
 	// AnimationHead is an animation that is played over the head part of the skin.
 	AnimationHead AnimationType = iota
