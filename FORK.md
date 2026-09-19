@@ -12,10 +12,19 @@ whenever it changes; a branch that is not on the list is not in `next`.
 `upstream/master` is at the version named by the most recent `dragonfly:
 Updated to ...` commit below the merges.
 
-`next` remains the Minecraft 1.26.45 source line for backends. The separate
-1.26.50 preview below is excluded from its constituent list and rebuild tool.
-Check the upstream protocol version before a rebuild too: moving the base
-to a newer protocol is a coordinated upgrade, not routine fork maintenance.
+`next` is on upstream v0.11.5, Minecraft 1.26.50 / protocol 2193, gophertunnel
+v1.62.0, since the rebuild of 2026-09-19. Check the upstream protocol version
+before a rebuild: moving the base to a newer protocol is a coordinated
+upgrade, not routine fork maintenance.
+
+The resolver unions both sides of a conflict, which is wrong for generated
+code and for a hunk that ends inside a function. After every conflicted
+merge run `go build ./...`, regenerate `server/block/hash.go` with
+`go run ./cmd/blockhash -o server/block/hash.go ./server/block`, and fix the
+merge before the next branch. The 2026-09-19 rebuild needed that for
+`perf/chunk-height-maps`, `fix/low-block-collision`, `fix/door-collision`,
+`fix/hub-blocks`, `fix/block-states` and `fix/blocks-shaped`, plus one
+follow-up commit on `next` for a field access the union kept from upstream.
 
 ## Rebuild tooling
 
@@ -86,8 +95,7 @@ names what it follows. The first two follow `feature/death-animation` and
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
 | `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that only takes the frames real time has passed, that a new block may carry at most two of (naming another block earns nothing), and that an episode already underway may bank so delayed inputs are all credited; a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
-| `feature/block-shapes` | Fences, panes, bars, tripwire and stairs go to the client in the shape it reads since 1.26.50: connections and corners worked out from the neighbours when the block is sent, in sub-chunks and block updates, with the blocks around a change and the border of a newly loaded chunk sent again. Where a block has no position, in item stacks, particles and falling blocks, it goes out in the shape it has on its own, and the registry resolves that hash back. The world stores the plain state. Follows `feature/network-block-hashes` for the hash transport and `fix/fence-gate-connection` and `fix/hub-blocks` for the fence and pane rules; cut from `next` at 275236cb. |
-| `fix/tripwire-hook-placement` | The tripwire hook hangs on the wall face it is placed against, pointing away from it, and drops when that wall goes. Follows `fix/hub-blocks`, which added the block for decoding only; cut from `next` at 95baeb94. |
+| `fix/tripwire-hook-placement` | The tripwire hook hangs on the wall face it is placed against, pointing away from it, and drops when that wall goes. Follows `fix/hub-blocks`, which added the block for decoding only; cut from `next` at 8064658b. |
 
 ## Additions not yet sent upstream
 
@@ -106,32 +114,16 @@ Independent of the fork's features, candidates for upstream pull requests.
 |---|---|
 | `docs/fork` | This file, the rebuild tools, and the fork maintainer agent. |
 
-## Protocol preview outside `next`
+## Retired branches
 
-These branches are not part of the `next` list. Do not add either to
-`tools/fork/mknext.sh`: backends move to 1.26.50 one at a time, and the
-ones still on 1.26.45 keep building `next` as it is.
+Kept on the fork until no consumer pins them, then deleted.
 
-| Branch | Adds |
+| Branch | Was |
 |---|---|
-| `fix/26.50-compat` | The 1.26.50 source adaptations on gophertunnel v1.62.0, the 1.26.50 release. Keeps the renamed block interaction action ignored, expresses dimension bounds as minimum Y and highest-Y distance (383 for -64..319), and has the reusable sub-chunk height maps of `perf/chunk-height-maps` produce the release's `protocol.HeightMap`, which is why it is cut from `next` at d17aacd2 rather than from the upstream base. A constituent of the preview only. |
-| `next-26.50` | `next` with `fix/26.50-compat` merged in, for Minecraft 1.26.50 / protocol 2193. Recomposed from the current `next` whenever a backend needs it; `next` itself does not move. |
-
-The preview keeps the 1.26.45 block palette on purpose. Block IDs go out as
-state hashes (`feature/network-block-hashes`) and the reshaped blocks in the
-1.26.50 shape (`feature/block-shapes`), so a 1.26.50 client reads the world
-correctly, the saved world stays as it is, and a player transfers between a
-1.26.45 and a preview backend without a reconnect: the proxy keys the
-palette on the hash flag and the custom blocks, both equal on either side.
-
-The preview requires `github.com/sandertv/gophertunnel v1.62.0`, the
-1.26.50 release the proxy is built with, and no replacement: the proxy takes
-a backend as its own build only on an exact module version match, so a
-server selecting this line must resolve the same version. With Go 1.26.5,
-`go build ./...` and `go vet ./...` verify the preview standalone.
+| `feature/block-shapes` | Sent fences, panes, bars, tripwire and stairs in the 1.26.50 shape from the 1.26.45 palette, worked out from the neighbours at send time. Upstream v0.11.5 stores connections and stair corners in the block state and derives them for a saved world on load, so the branch left the list at the 2026-09-19 rebuild. |
+| `fix/26.50-compat` and `next-26.50` | The 1.26.50 preview while `next` was still on 1.26.45: the source adaptations upstream has since made, on gophertunnel v1.62.0. `next` carries all of it now. Last preview revision dd12588a. |
 
 `DefaultBiome` remains explicitly empty. Gophertunnel defines it as a biome
 identifier and serialises the string unchanged, but Dragonfly's dimension
 interface supplies no default biome and void generation identifies none.
-The client's empty-name fallback is unverified; custom-dimension client
-validation is still needed before treating the preview as rollout-ready.
+The client's empty-name fallback is unverified.
