@@ -264,6 +264,19 @@ type movement struct {
 	pos, rot mgl32.Vec3
 }
 
+// velocityWorthSending is false only for a zero repeating a zero: a repeated
+// non-zero velocity is a new impulse, such as two identical knockbacks.
+func velocityWorthSending(last mgl32.Vec3, sent bool, vel mgl32.Vec3) bool {
+	if !sent {
+		return true
+	}
+	return !(nearZero(vel) && nearZero(last))
+}
+
+func nearZero(v mgl32.Vec3) bool {
+	return math.Abs(float64(v[0])) < moveEpsilon && math.Abs(float64(v[1])) < moveEpsilon && math.Abs(float64(v[2])) < moveEpsilon
+}
+
 // moveEpsilon is the distance below which a movement counts as none at all.
 const moveEpsilon = 1e-4
 
@@ -283,9 +296,8 @@ func (m movement) changed(b movement) (x, y, z, pitch, yaw protocol.Optional[flo
 		set(m.rot[0], b.rot[0]), set(m.rot[1], b.rot[1])
 }
 
-// ViewEntityVelocity tells a viewer how fast an Entity is going. A velocity the
-// client already holds is not repeated: it applies one to its own prediction of
-// the Entity, so the same value again is another push rather than a restatement.
+// ViewEntityVelocity tells a viewer the velocity an Entity now has. Only a
+// repeated zero is left out; a resting entity reports one every tick.
 func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	if s.entityHidden(e) {
 		return
@@ -295,7 +307,7 @@ func (s *Session) ViewEntityVelocity(e world.Entity, velocity mgl64.Vec3) {
 	last, sent := s.lastVel[id]
 	s.lastVel[id] = vel
 	s.entityMutex.Unlock()
-	if sent && last.ApproxEqualThreshold(vel, moveEpsilon) {
+	if !velocityWorthSending(last, sent, vel) {
 		return
 	}
 	s.writePacket(&packet.SetActorMotion{EntityRuntimeID: id, Velocity: vel})

@@ -94,6 +94,7 @@ type playerData struct {
 	breakingPos       cube.Pos
 	breakingFace      cube.Face
 	lastBreakDuration time.Duration
+	breakStart        time.Time
 
 	breakCounter uint32
 
@@ -482,7 +483,8 @@ func (p *Player) fall(distance float64) {
 // respawn.
 // If the damage passed is negative, Hurt will not do anything. Hurt returns the
 // final damage dealt to the Player and if the Player was vulnerable to this
-// kind of damage.
+// kind of damage. A hit inside the immunity window deals its excess over the
+// hit that armed it and counts as landed; KnockBack refuses it.
 func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 	if _, ok := p.Effect(effect.FireResistance); (ok && src.Fire()) || p.Dead() || !p.GameMode().AllowsTakingDamage() || dmg < 0 {
 		return 0, false
@@ -543,14 +545,18 @@ func (p *Player) Hurt(dmg float64, src world.DamageSource) (float64, bool) {
 		}
 	}
 
-	pos := p.Position()
-	for _, viewer := range p.viewers() {
-		viewer.ViewEntityAction(p, entity.HurtAction{})
-	}
-	if src.Fire() {
-		p.Tx().PlaySound(pos, sound.Burning{})
-	} else if _, ok := src.(entity.DrowningDamageSource); ok {
-		p.Tx().PlaySound(pos, sound.Drowning{})
+	// A hit inside the immunity window deals only its excess: no hurt
+	// animation, no sound, and callers knock back only a vulnerable target.
+	if !immune {
+		pos := p.Position()
+		for _, viewer := range p.viewers() {
+			viewer.ViewEntityAction(p, entity.HurtAction{})
+		}
+		if src.Fire() {
+			p.Tx().PlaySound(pos, sound.Burning{})
+		} else if _, ok := src.(entity.DrowningDamageSource); ok {
+			p.Tx().PlaySound(pos, sound.Drowning{})
+		}
 	}
 
 	p.Wake()
@@ -618,7 +624,7 @@ func (p *Player) Absorption() float64 {
 // source of the velocity, typically the position of an attacking entity. The source is used to calculate the
 // direction which the entity should be knocked back in.
 func (p *Player) KnockBack(src mgl64.Vec3, force, height float64) {
-	if p.Dead() || !p.GameMode().AllowsTakingDamage() {
+	if p.Dead() || !p.GameMode().AllowsTakingDamage() || p.immunity.Absorbing() {
 		return
 	}
 	p.knockBack(src, force, height)
@@ -1822,7 +1828,7 @@ func (p *Player) StartBreaking(pos cube.Pos, face cube.Face) {
 		punchable.Punch(pos, face, p.Tx(), p)
 	}
 
-	p.breaking, p.breakingFace = true, face
+	p.breaking, p.breakingFace, p.breakStart = true, face, time.Now()
 	p.SwingArm()
 
 	if p.GameMode().CreativeInventory() {
@@ -1871,9 +1877,24 @@ func (p *Player) FinishBreaking() {
 		p.resendNearbyBlock(p.breakingPos)
 		return
 	}
+	// The server saw the start and sees the finish after the same one-way
+	// delay, so the elapsed time must match the break time it computed for
+	// the crack animation, up to jitter. A finish that comes early is a
+	// client breaking faster than its tool allows; the block is resent.
+	if need := p.lastBreakDuration; !p.GameMode().CreativeInventory() && need > 0 {
+		if elapsed := time.Since(p.breakStart); elapsed < need-need/5-breakSlack {
+			pos := p.breakingPos
+			p.AbortBreaking()
+			p.resendNearbyBlock(pos)
+			return
+		}
+	}
 	p.AbortBreaking()
 	p.BreakBlock(p.breakingPos)
 }
+
+// breakSlack is the jitter allowed on a break's elapsed time: two ticks.
+const breakSlack = 100 * time.Millisecond
 
 // AbortBreaking makes the player stop breaking the block it is currently breaking, or returns immediately
 // if the player isn't breaking anything.

@@ -2,16 +2,20 @@ package entity
 
 import "time"
 
-// AttackImmunity keeps track of the brief invulnerability an entity has after taking damage. While a window
-// is active, damage up to the amount that armed it is absorbed entirely and only the excess of a stronger
-// hit is dealt, as in vanilla. The zero value is an AttackImmunity without an active window.
+// AttackImmunity is the invulnerability window an entity has after being
+// hurt.
 type AttackImmunity struct {
-	until time.Time
-	last  float64
+	until  time.Time
+	last   float64
+	excess bool // the last hit landed inside a running window
 }
 
-// Reduce filters damage through the immunity window. If the window is active, the damage is reduced by the
-// amount that armed it, and immune is true. Callers deal the returned damage only if it is positive.
+// tickDuration is one world tick. The window expires a tick early, as a
+// vanilla tick-counted window does depending on phase.
+const tickDuration = time.Second / 20
+
+// Reduce reduces the damage of a hit by what the window already absorbed.
+// Callers deal the returned damage only if it is positive.
 func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 	if !time.Now().Before(a.until) {
 		return damage, false
@@ -19,8 +23,19 @@ func (a *AttackImmunity) Reduce(damage float64) (left float64, immune bool) {
 	return damage - a.last, true
 }
 
-// Arm starts a new immunity window with the duration passed, during which damage up to the damage value
-// passed is absorbed.
+// Arm starts a window of d for a hit of damage. A hit inside a running
+// window raises the remembered damage without restarting the window.
 func (a *AttackImmunity) Arm(d time.Duration, damage float64) {
-	a.until, a.last = time.Now().Add(d), damage
+	if time.Now().Before(a.until) {
+		a.last, a.excess = max(a.last, damage), true
+		return
+	}
+	a.until, a.last, a.excess = time.Now().Add(max(0, d-tickDuration)), damage, false
+}
+
+// Absorbing reports whether the window is running and its last hit landed
+// inside it: such a hit deals its excess and nothing else, so no knockback
+// and no hurt feedback belong to it.
+func (a *AttackImmunity) Absorbing() bool {
+	return a.excess && time.Now().Before(a.until)
 }
