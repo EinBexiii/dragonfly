@@ -3,13 +3,46 @@
 ## How `next` is built
 
 `next` is never edited directly. It is `upstream/master` (df-mc/dragonfly) plus
-every branch below merged in with a merge commit, in the order listed. Each
+every branch in the Features through Documentation sections below merged in
+with a merge commit, in the order listed. Each
 branch is based on `upstream/master` unless it says otherwise, so any of them
 can be dropped or sent upstream on its own. `next` is rebuilt from that list
 whenever it changes; a branch that is not on the list is not in `next`.
 
 `upstream/master` is at the version named by the most recent `dragonfly:
 Updated to ...` commit below the merges.
+
+`next` is on upstream v0.11.5, Minecraft 1.26.50 / protocol 2193, gophertunnel
+v1.62.0, since the rebuild of 2026-09-19. Check the upstream protocol version
+before a rebuild: moving the base to a newer protocol is a coordinated
+upgrade, not routine fork maintenance.
+
+The resolver unions both sides of a conflict, which is wrong for generated
+code and for a hunk that ends inside a function. After every conflicted
+merge run `go build ./...`, regenerate `server/block/hash.go` with
+`go run ./cmd/blockhash -o server/block/hash.go ./server/block`, and fix the
+merge before the next branch. The 2026-09-19 rebuild needed that for
+`perf/chunk-height-maps`, `fix/low-block-collision`, `fix/door-collision`,
+`fix/hub-blocks`, `fix/block-states` and `fix/blocks-shaped`, plus one
+follow-up commit on `next` for a field access the union kept from upstream.
+
+## Rebuild tooling
+
+Maintain [mknext.sh](tools/fork/mknext.sh), its [resolver](tools/fork/resolve.py),
+and the [fork maintainer agent](.claude/agents/fork-maintainer.md) on `docs/fork`.
+
+Run `sh tools/fork/mknext.sh` from a clean `docs/fork` worktree to rebuild that
+checkout, or `sh tools/fork/mknext.sh /path/to/fork-checkout` to rebuild a
+separate clean checkout. The target needs `upstream/master` and every branch
+in the script as local refs; the tool does not fetch or push. It refuses a
+dirty target or missing refs before replacing `next`. The resolver is copied
+to temporary storage because checking out upstream removes these tools until
+`docs/fork` is merged again. The shell loads the rebuild function first.
+
+A rebuild replaces `next` and replays the full list onto `upstream/master`.
+Inspect the target checkout and branch topology before using it. To land one
+constituent branch, maintain the script's list on `docs/fork` and merge that
+branch into `next`; a full rebuild is a separate operation.
 
 ## Features
 
@@ -23,6 +56,7 @@ Updated to ...` commit below the merges.
 | `feature/entity-target` | A mob's target is reported to viewers. |
 | `feature/tack-items` | Saddle, horse armour, an entity's armour inventory, and armour rendered on an entity's body. |
 | `feature/entity-trading` | Trading with entities, on top of the inventory an entity carries. |
+| `feature/network-block-hashes` | Blocks go over the wire as the hash of their state instead of a palette index, so a client on a newer Minecraft version reads this server's world correctly. Chunk palettes, block updates, particles, sounds, falling blocks and item stacks in both directions; the crack particle picks its event by face since the data holds the whole hash. |
 
 ## Fixes not yet in upstream
 
@@ -39,16 +73,29 @@ the list once upstream merges it.
 | `fix/nil-block-entity-nbt` | A block entity that encodes to nil NBT no longer panics the chunk send path. | #1275 |
 | `fix/spectator-game-mode` | Spectator is reproduced as measured on BDS 1.26.45: a game mode change is one player game type update addressed to the player's own unique ID (spectator is 6); a spectator's abilities carry the spectator layer ahead of the base layer, for the player and in the AddPlayer other clients get; the client hides a spectator by game type, so no invisibility is forced and no teleport is sent; a spectator cannot use items, and its request to stop flying is ignored. | #1285 |
 | `perf/chunk-height-maps` | Height-map columns are cached and invalidated per column, and a chunk's surface is prepared once per sub-chunk response. | #1449 |
+| `fix/wall-collision-height` | A wall's collision box is the one the Bedrock server computes: a block and a half tall like a fence's whatever the drawn post and arm heights, one enclosing box, a straight postless run as narrow as its arms. Entity movement searches half a block further down for a fence or wall that reaches up into the box. | not yet sent |
+| `fix/low-block-collision` | Rails, pressure plates and buttons have empty collision in every vanilla state, including all wood materials in the bundled palette. Snow layers collide at (layers−1)/8 height with the first layer empty; mud and soul sand collide at 7/8 height. Registers the missing states and their hashes without adding rail or redstone mechanics. Based on `a36ed0ed`; geometry follows the 2026-09-10 Rook block collision audit and state coverage follows the vanilla palette. | not yet sent |
+| `fix/lily-pad-collision` | Lily pads collide 3/32 high, inset a sixteenth, as Bedrock has them (BDS constructor 0xc6840da); the old 1/64 top left a landing player unsupported for the anticheat. Based on `a36ed0ed`; row 6 of the 2026-09-10 Rook block collision audit. | not yet sent |
+| `fix/trapdoor-collision` | Trapdoors collide 0.1825 thick in every orientation, as Bedrock has them (BDS shape helper 0x148a233d0, constants 0.1825 and 0.8175 at 0x14a8262e4 and 0x14a8262e0); Java's 3/16 left a landing player standing 0.005 inside the box, which the anticheat read as an unexplained clipped fall. Based on `a36ed0ed`. | not yet sent |
+| `fix/flower-pot-collision` | Flower pots are registered with Bedrock's centred 3/8 by 3/8 collision box, collision only (BDS constructor 0x1489deba0 stores (0.3125, 0, 0.3125) to (0.6875, 0.375, 0.6875); the box getter 0x1414e4a20 ignores the pot's contents); the palette had the states but no block, so the fallback full cube left a standing player 5/8 inside it. Based on `a36ed0ed`; row 22 of the 2026-09-10 Rook block collision audit. | not yet sent |
+| `fix/partial-block-collision` | Hoppers, grindstones, composters, brewing stands, iron trapdoors and cauldrons collide as the Bedrock server has them, read from its binary (Rook's reviews/2026-09-12-partial-block-boxes-bds-astra.md): hopper floor plate 10/16 to 11/16 with walls, body and facing outlet; grindstone inset an eighth so a standing one reaches the top; empty composter floor an eighth; brewing stand stem 0 to 7/8; iron trapdoor on the trapdoor model; cauldron floor 5/16 with eighth walls for every state. Based on `a36ed0ed`; audit rows 7, 11, 12, 13, 16 and 17. | not yet sent |
+| `fix/fence-gate-connection` | A fence joins a gate only at the ends of the gate's bar, open or closed, as the Bedrock server connects them (Rook's reviews/2026-09-13-fence-gate-connection-bds-astra.md: gate connection mask at 0x1489d7ba0, fence helper 0x14158ee50); the faces a gate swings through carry no arm. Connecting to every gate put a 1.5 tall box where the client has none. | not yet sent |
+| `fix/door-collision` | Door leaves are 0.1825 thick and both halves read direction and open state from the lower half and the hinge from the upper, as the Bedrock server does (Rook's reviews/2026-09-13-door-collision-bds-astra.md: shape routine 0x148e95ca0, pair resolver 0x148e95a20); iron doors exist, sharing the model and placement. A saved world's upper half carries default state, so the fork drew its leaf on the other side of the block. | not yet sent |
+| `fix/hub-blocks` | Every block state the lobby's saved world holds decodes: rotated quartz, redstone lamps, huge and small mushrooms, dispensers, frosted ice, hardened stained glass panes, tripwire hooks, daylight detectors, pistons with their arms, chorus plants and flowers, with collision as the Bedrock server has it (Rook's reviews/2026-09-13-hub-blocks-bds-astra.md): the piston base a full cube in every state, the arm three boxes with the rear connector a quarter into the base, the chorus plant one box grown toward its neighbours, the detector 0.375 high, hooks and small mushrooms without collision. A one-sided pane or bar arm ends at the middle of the block, not the post edge; `cmd/blockhash` learned `MushroomBlockType`. No placement or redstone logic. | not yet sent |
+| `fix/block-states` | Blocks the fork had but whose saved states it refused decode: exploding tnt, ladders and wall signs, banners and glazed terracotta with any facing_direction, occupied beds, the deprecated property on bone and hay blocks, item frame map and photo bits, the multiple grindstone attachment, powered lecterns, a portal without an axis, purpur on every axis; the poplar wood type with its three leaf colours. No box moves for a state the fork already accepted; directions hash in three bits. | not yet sent |
+| `fix/blocks-shaped` | Nineteen block kinds with their own collision, read from the Bedrock server (Rook's reviews/2026-09-14-shaped-blocks-bds-astra.md): hanging signs, shelves, bell, dripleaves, pointed dripstone, amethyst buds and cluster, coral fans, copper bulbs, lightning rods, respawn anchor, turtle and sniffer eggs, chiseled bookshelf, sculk vein, glow lichen, resin clump, pale moss carpet, leaf litter, mangrove and hanging roots, frog spawn, pitcher plant and crop. Decode, collision, creative items and placement: each block is placed the way it was clicked, turning its front to the player or growing out of the face it was put on, and breaks when what carried it is gone; a copper bulb toggles on the rising edge of a redstone signal and lights the room, dimmed by its oxidation. Saved block-entity data still rides through untouched, and there is still no break info and no oxidation tick. A coral wall fan is decoded but never placed: the corpus does not resolve which cardinal each of its four coral_direction values is. Scaffolding stays unknown: Bedrock collides it only for an actor standing on its top, which the collision interface cannot see. | not yet sent |
 
-## Fixes on the fork's own features
+## Branches on the fork's own work
 
-Built on `feature/death-animation` and `feature/integration`, so they cannot
-go upstream on their own; they follow those branches.
+Built on other fork branches, so they cannot go upstream on their own; each
+names what it follows. The first two follow `feature/death-animation` and
+`feature/integration`.
 
-| Branch | Fixes |
+| Branch | Adds or fixes |
 |---|---|
 | `fix/immunity-excess-knockback` | A hit inside the attack immunity window deals its excess and counts as landed, but the window remembers that it did and `KnockBack` refuses it, on players and living entities, so a crit after a plain hit no longer sends the victim flying twice; the hurt animation and sound stay silent for it. |
 | `fix/break-time-check` | A survival break is credited one mining frame per admitted client input frame, admitted by a budget that only takes the frames real time has passed, that a new block may carry at most two of (naming another block earns nothing), and that an episode already underway may bank so delayed inputs are all credited; a finish must name the block the episode started on, in reach, with its whole break time earned, an early one keeps the progress; a block the held tool breaks within a frame needs no episode but spends a frame. `StopBreak` is an abort. |
+| `fix/tripwire-hook-placement` | The tripwire hook hangs on the wall face it is placed against, pointing away from it, and drops when that wall goes. Follows `fix/hub-blocks`, which added the block for decoding only; cut from `next` at 8064658b. |
 
 ## Additions not yet sent upstream
 
@@ -57,10 +104,26 @@ Independent of the fork's features, candidates for upstream pull requests.
 | Branch | Adds |
 |---|---|
 | `fix/transfer-inventory-resync` | The inventories and the held slot are sent again on the first input after a spawn, since a client arriving by transfer discards what reached it before its own spawn completed. |
+| `feature/named-particle` | `particle.Custom` shows a resource pack's own particle effect by name, as `sound.Custom` plays its sounds. |
 | `fix/entity-handles-within` | `Tx.EntityHandlesWithin`, `Tx.EntityHandles` and `Tx.EntityPosition`: entities as handles, without opening them, so a mob ranking hundreds of candidates opens only the ones it keeps. A handle's position is read through its world's transaction, which reports false for a handle that world no longer holds. |
+| `feature/entity-view` | `Tx.EntityHandlesOf`: the World's entity handles grouped by identifier, rebuilt only when an entity is added or removed, so a crowd of mobs looking for the few players costs the players rather than the crowd. |
 
 ## Documentation
 
 | Branch | Adds |
 |---|---|
-| `docs/fork` | This file. |
+| `docs/fork` | This file, the rebuild tools, and the fork maintainer agent. |
+
+## Retired branches
+
+Kept on the fork until no consumer pins them, then deleted.
+
+| Branch | Was |
+|---|---|
+| `feature/block-shapes` | Sent fences, panes, bars, tripwire and stairs in the 1.26.50 shape from the 1.26.45 palette, worked out from the neighbours at send time. Upstream v0.11.5 stores connections and stair corners in the block state and derives them for a saved world on load, so the branch left the list at the 2026-09-19 rebuild. |
+| `fix/26.50-compat` and `next-26.50` | The 1.26.50 preview while `next` was still on 1.26.45: the source adaptations upstream has since made, on gophertunnel v1.62.0. `next` carries all of it now. Last preview revision dd12588a. |
+
+`DefaultBiome` remains explicitly empty. Gophertunnel defines it as a biome
+identifier and serialises the string unchanged, but Dragonfly's dimension
+interface supplies no default biome and void generation identifies none.
+The client's empty-name fallback is unverified.
