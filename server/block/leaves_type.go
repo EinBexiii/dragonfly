@@ -60,22 +60,6 @@ func FloweringAzaleaLeaves() LeavesType {
 	return LeavesType{10}
 }
 
-// OrangePoplarLeaves returns orange poplar leaves. Poplar is the one tree whose leaves come in more than one
-// colour, so each colour is a leaves type of its own rather than a variant of a single poplar type.
-func OrangePoplarLeaves() LeavesType {
-	return LeavesType{11}
-}
-
-// RedPoplarLeaves returns red poplar leaves.
-func RedPoplarLeaves() LeavesType {
-	return LeavesType{12}
-}
-
-// YellowPoplarLeaves returns yellow poplar leaves.
-func YellowPoplarLeaves() LeavesType {
-	return LeavesType{13}
-}
-
 // LeavesTypes returns all supported leaves types.
 func LeavesTypes() []LeavesType {
 	return []LeavesType{
@@ -90,9 +74,6 @@ func LeavesTypes() []LeavesType {
 		PaleOakLeaves(),
 		AzaleaLeaves(),
 		FloweringAzaleaLeaves(),
-		OrangePoplarLeaves(),
-		RedPoplarLeaves(),
-		YellowPoplarLeaves(),
 	}
 }
 
@@ -128,12 +109,6 @@ func (t leavesType) String() string {
 		return "azalea_leaves"
 	case 10:
 		return "azalea_leaves_flowered"
-	case 11:
-		return "orange_poplar_leaves"
-	case 12:
-		return "red_poplar_leaves"
-	case 13:
-		return "yellow_poplar_leaves"
 	}
 	panic("unknown leaves type")
 }

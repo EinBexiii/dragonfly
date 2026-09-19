@@ -497,10 +497,6 @@ func init() {
 	}
 	world.RegisterItem(Leaves{Type: AzaleaLeaves(), Persistent: true})
 	world.RegisterItem(Leaves{Type: FloweringAzaleaLeaves(), Persistent: true})
-	// Poplar leaves have no single type belonging to PoplarWood, so they are not covered by the loop above.
-	world.RegisterItem(Leaves{Type: OrangePoplarLeaves(), Persistent: true})
-	world.RegisterItem(Leaves{Type: RedPoplarLeaves(), Persistent: true})
-	world.RegisterItem(Leaves{Type: YellowPoplarLeaves(), Persistent: true})
 	for _, ore := range OreTypes() {
 		world.RegisterItem(CoalOre{Type: ore})
 		world.RegisterItem(CopperOre{Type: ore})
